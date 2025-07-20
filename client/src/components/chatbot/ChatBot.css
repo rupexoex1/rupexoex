@@ -66,6 +66,8 @@
   margin-bottom: 82px;
   overflow-y: auto;
   padding: 25px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd3f9 transparent;
 }
 
 .chat-body .message {
@@ -110,7 +112,7 @@
   border-radius: 13px 13px 3px 13px;
 }
 
-.chat-footer{
+.chat-footer {
   position: absolute;
   bottom: 0;
   width: 100%;
@@ -118,16 +120,16 @@
   padding: 15px 22px 20px;
 }
 
-.chat-footer .chat-form{
+.chat-footer .chat-form {
   display: flex;
   align-items: center;
   background: #fff;
   border-radius: 32px;
-  outline: 1px solid #CCCCE5;
+  outline: 1px solid #cccce5;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.06);
 }
 
-.chat-footer .chat-form:focus-within{
+.chat-footer .chat-form:focus-within {
   outline: 2px solid #6d4fc2;
 }
 
@@ -141,7 +143,7 @@
   font-size: 0.95rem;
 }
 
-.chat-form button{
+.chat-form button {
   height: 35px;
   width: 35px;
   border: none;
@@ -157,10 +159,10 @@
   transition: 0.2s ease;
 }
 
-.chat-form button:hover{
+.chat-form button:hover {
   background: #593bab;
 }
 
-.chat-form .message-input-valid~button{
+.chat-form .message-input:valid ~ button {
   display: block;
 }
