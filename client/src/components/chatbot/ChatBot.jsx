@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './ChatBot.css'
 
 import ChatbotIcon from './ChatbotIcon'
@@ -8,9 +8,40 @@ import ChatMessage from './ChatMessage'
 const ChatBot = () => {
 
   const [chatHistory, setChatHistory] = useState([]);
-  const generateBotResponse = (history) => {
-    console.log(history)
+  const chatBodyRef = useRef()
+
+  const generateBotResponse = async (history) => {
+
+    //Helper function to update chat history
+    const updateHistory = (text) => {
+      setChatHistory(prev => [...prev.filter(msg => msg.text !== "Thinking..."), { role: "model", text }])
+    }
+
+    // Format chat history for API request
+    history = history.map(({ role, text }) => ({ role, parts: [{ text }] }))
+
+    const requestOptions = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: history })
+    }
+    try {
+      // Make the API call to get the bot's response
+      const response = await fetch(import.meta.env.VITE_API_URL, requestOptions);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error.message || "Something went wrong!")
+      // Clean and update chat history with bot's reponse
+      const apiResponseText = data.candidates[0].content.parts[0].text.replace(/\*\*(.*?)\*\*/g, "$1").trim();
+      updateHistory(apiResponseText)
+    } catch (error) {
+      console.log(error)
+    }
   }
+
+  useEffect(() => {
+    // Auto-scroll whenever chat history updates
+    chatBodyRef.current.scrollTo({ top: chatBodyRef.current.scrollHeight, behavior: "smooth" })
+  }, [chatHistory])
 
   return (
     <div className='container'>
@@ -26,7 +57,7 @@ const ChatBot = () => {
           </button>
         </div>
         {/* Chat Body */}
-        <div className="chat-body">
+        <div ref={chatBodyRef} className="chat-body">
           <div className="message bot-message">
             <ChatbotIcon />
             <p className='message-text'>
