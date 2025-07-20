@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import BottomBar from '../components/BottomBar.jsx';
+import ChatBot from '../components/chatbot/ChatBot.jsx';
 
 export default function Layout() {
   return (
@@ -8,6 +9,7 @@ export default function Layout() {
         <div className="pb-16"> {/* Prevent bottom bar overlap */}
           <Outlet />
         </div>
+        <ChatBot/>
         <BottomBar />
       </div>
     </div>

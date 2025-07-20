@@ -6,7 +6,6 @@ import twoMobiles from '../assets/static/twoMobiles.png'
 import ContainerOne from '../components/containers/ContainerOne'
 import ContainerTwo from '../components/containers/ContainerTwo'
 import ContainerThree from '../components/containers/ContainerThree'
-import ChatBot from '../components/chatbot/ChatBot'
 import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
 
 const Home = () => {
@@ -56,7 +55,6 @@ const Home = () => {
 
       {/* Live Crypto Coins */}
       <LiveCryptoCoins/>
-      <ChatBot/>
     </div>
   )
 }

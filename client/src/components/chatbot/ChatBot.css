@@ -122,6 +122,10 @@
   align-items: center;
 }
 
+.chat-body .message.error .message-text{
+  color: #ff0000;
+}
+
 .chat-body .bot-message svg {
   height: 35px;
   width: 35px;

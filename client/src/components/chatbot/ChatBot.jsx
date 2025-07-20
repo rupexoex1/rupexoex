@@ -14,8 +14,8 @@ const ChatBot = () => {
   const generateBotResponse = async (history) => {
 
     //Helper function to update chat history
-    const updateHistory = (text) => {
-      setChatHistory(prev => [...prev.filter(msg => msg.text !== "Thinking..."), { role: "model", text }])
+    const updateHistory = (text, isError = false) => {
+      setChatHistory(prev => [...prev.filter(msg => msg.text !== "Thinking..."), { role: "model", text, isError }])
     }
 
     // Format chat history for API request
@@ -35,7 +35,7 @@ const ChatBot = () => {
       const apiResponseText = data.candidates[0].content.parts[0].text.replace(/\*\*(.*?)\*\*/g, "$1").trim();
       updateHistory(apiResponseText)
     } catch (error) {
-      console.log(error)
+      console.log(error.message, true)
     }
   }
 
