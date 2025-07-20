@@ -160,7 +160,7 @@
 
 .chat-footer {
   position: absolute;
-  bottom: 0;
+  bottom: 55px;
   width: 100%;
   background: #fff;
   padding: 15px 22px 20px;
