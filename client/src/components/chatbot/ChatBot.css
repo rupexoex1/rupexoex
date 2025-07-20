@@ -1,6 +1,6 @@
 #chatbot-toggler {
   position: fixed;
-  top: 545px;
+  bottom: 70px !important;
   right: 10px !important;
   border: none;
   height: 50px;
