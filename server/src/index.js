@@ -11,7 +11,7 @@ const app = express();
 // All frontend from port 5173
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://rupexo-server.vercel.app",
+  "https://rupexo.vercel.app",
 ];
 app.use(
   cors({
