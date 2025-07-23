@@ -12,38 +12,15 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 const Home = () => {
-
   const { user } = useAppContext();
   const [userName, setUserName] = useState("")
-  const [userRole, setUserRole] = useState("")
-
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'))
     if (storedUser) {
       setUserName(storedUser.name)
-      setUserRole(storedUser.role)
       toast.success(`Welcome ${storedUser.name}`)
-    } else {
-      setUserName("")
-      setUserRole("")
     }
-  }, [])
-  // Logic for name with role
-  let nameWithRole = "Guest";
-  if (userName && userRole) {
-    if (userRole === "admin") {
-      nameWithRole = `${userName} (Admin)`;
-    } else if (userRole === "manager") {
-      nameWithRole = `${userName} (Manager)`;
-    } else if (userRole === "user") {
-      nameWithRole = userName;
-    } else {
-      nameWithRole = userName;
-    }
-  } else if (userName && !userRole) {
-    nameWithRole = userName;
-  }
-
+  })
   return (
     <div className='rich-text'>
 
@@ -62,7 +39,7 @@ const Home = () => {
               <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
                 Welcome to Rupexo
               </h2>
-              <p className="rich-text text-xs mb-1">{nameWithRole}</p>
+              <p className="rich-text text-xs mb-1">{userName || "Guest"}</p>
             </div>
           </div>
 
