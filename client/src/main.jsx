@@ -3,11 +3,14 @@ import './index.css'
 import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import CoinContextProvider from './context/CoinContext.jsx'
+import { AppProvider } from './context/AppContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <CoinContextProvider>
-      <App />
-    </CoinContextProvider>
+    <AppProvider>
+      <CoinContextProvider>
+        <App />
+      </CoinContextProvider>
+    </AppProvider>
   </BrowserRouter>
 )

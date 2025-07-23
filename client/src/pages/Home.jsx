@@ -7,8 +7,20 @@ import ContainerOne from '../components/containers/ContainerOne'
 import ContainerTwo from '../components/containers/ContainerTwo'
 import ContainerThree from '../components/containers/ContainerThree'
 import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
+import { useAppContext } from '../context/AppContext'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 
 const Home = () => {
+  const { user } = useAppContext();
+  const [userName, setUserName] = useState("")
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem('user'))
+    if (storedUser) {
+      setUserName(storedUser.name)
+      toast.success(`Welcome ${storedUser.name}`)
+    }
+  })
   return (
     <div className='rich-text'>
 
@@ -19,7 +31,7 @@ const Home = () => {
           {/* Avatar */}
           <div className="flex items-center gap-3 cursor-pointer">
             <img
-              src={avatar} // Replace with actual path
+              src={avatar}
               alt="User"
               className="w-12 h-12 rounded-full border-2 border-blue-500"
             />
@@ -27,17 +39,22 @@ const Home = () => {
               <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
                 Welcome to Rupexo
               </h2>
-              <p className="rich-text text-xs mb-1">Huzi Alpha</p>
+              <p className="rich-text text-xs mb-1">{userName || "Guest"}</p>
             </div>
           </div>
 
           {/* Icon */}
           <div className="w-10 h-10 rounded-full flex items-center justify-center">
-            <img
-              src={bot} // Replace with actual icon
-              alt="Headset"
-              className="w-10 h-10 cursor-pointer"
-            />
+            <a
+              href='https://wa.me/923236619004?text=Hello%20Rupexo%20Support'
+              target='_blank'
+            >
+              <img
+                src={bot} // Replace with actual icon
+                alt="Headset"
+                className="w-10 h-10 cursor-pointer"
+              />
+            </a>
           </div>
         </div>
       </div>
@@ -49,12 +66,12 @@ const Home = () => {
         <ContainerThree />
         <ContainerThree />
         <div className='my-6 flex justify-center items-center'>
-        <img src={twoMobiles} alt="" />
+          <img src={twoMobiles} alt="" />
         </div>
       </div>
 
       {/* Live Crypto Coins */}
-      <LiveCryptoCoins/>
+      <LiveCryptoCoins />
     </div>
   )
 }
