@@ -41,7 +41,7 @@ const Login = () => {
   };
 
   return (
-    <div className='flex items-center justify-center h-screen'>
+    <div className='flex items-center justify-center py-16'>
       <div className='w-full max-w-sm p-6 max-md:m-6 border bg-white border-white shadow-xl shadow-primary/15 rounded-lg'>
         <div className='flex flex-col items-center justify-center'>
 
