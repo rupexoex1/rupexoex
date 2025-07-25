@@ -9,6 +9,8 @@ const Login = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +20,7 @@ const Login = () => {
 
       if (data.success) {
         // Storing the token and user in localStorage
-        localStorage.setItem('token', data.token); 
+        localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));  // Store user details
 
         // Set token in axios for future requests
@@ -56,30 +58,36 @@ const Login = () => {
 
             <div className='flex flex-col'>
               <label>Email</label>
-              <input 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                type="email" 
-                required 
-                placeholder='Your email id' 
-                className='border-b-2 border-gray-300 p-2 outline-none mb-6' 
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                required
+                placeholder='Your email id'
+                className='border-b-2 border-gray-300 p-2 outline-none mb-6'
               />
             </div>
 
-            <div className='flex flex-col'>
+            <div className='flex flex-col relative'>
               <label>Password</label>
-              <input 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                type="password" 
-                required 
-                placeholder='Your password' 
-                className='border-b-2 border-gray-300 p-2 outline-none mb-6' 
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type={showPassword ? "text" : "password"}
+                required
+                placeholder='Your password'
+                className='border-b-2 border-gray-300 p-2 outline-none mb-6'
               />
+              <span
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 bottom-8 cursor-pointer text-sm text-gray-500"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </span>
             </div>
 
-            <button 
-              type='submit' 
+            <button
+              type='submit'
               className='w-full py-3 mb-2 font-medium bg-[#6d4fc2] text-white rounded cursor-pointer hover:bg-primary/90'
             >
               Login

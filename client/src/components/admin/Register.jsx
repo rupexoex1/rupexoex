@@ -11,27 +11,60 @@ const Register = () => {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault()
+  //   try {
+  //     const res = await axios.post('/api/v1/auth/register', { name, phone, email, password, role: "user" })
+  //     if (res.data.success) {
+  //       localStorage.setItem('token', res.data.token)
+  //       localStorage.setItem('user', JSON.stringify(res.data.user))
+  //       setToken(res.data.token)
+  //       axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`
+  //       setTimeout(() => {
+  //         navigate("/")
+  //       }, 1000);
+  //       toast.success(res.data.message || "Registered successfully!")
+  //     } else {
+  //       toast.error(res.data.message || "Registration failed")
+  //     }
+  //   } catch (error) {
+  //     toast.error(error?.response?.data?.message || "Registration failed")
+  //   }
+  // }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      const res = await axios.post('/api/v1/auth/register', { name, phone, email, password, role: "user" })
-      if (res.data.success) {
-        localStorage.setItem('token', res.data.token)
-        localStorage.setItem('user', JSON.stringify(res.data.user))
-        setToken(res.data.token)
-        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`
-        setTimeout(() => {
-          navigate("/")
-        }, 1000);
-        toast.success(res.data.message || "Registered successfully!")
-      } else {
-        toast.error(res.data.message || "Registration failed")
-      }
-    } catch (error) {
-      toast.error(error?.response?.data?.message || "Registration failed")
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
     }
-  }
+
+    try {
+      const res = await axios.post('/api/v1/auth/register', {
+        name, phone, email, password, role: "user"
+      });
+
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        setToken(res.data.token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+        setTimeout(() => navigate("/"), 1000);
+        toast.success(res.data.message || "Registered successfully!");
+      } else {
+        toast.error(res.data.message || "Registration failed");
+      }
+
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Registration failed");
+    }
+  };
+
 
   return (
     <div className='flex items-center justify-center h-screen'>
@@ -60,10 +93,41 @@ const Register = () => {
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder='Your email id' className='border-b-2 border-gray-300 p-2 outline-none mb-6' />
             </div>
 
-            <div className='flex flex-col'>
+            {/* <div className='flex flex-col'>
               <label>Password</label>
               <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required placeholder='Your password' className='border-b-2 border-gray-300 p-2 outline-none mb-6' />
+            </div> */}
+
+            <div className='flex flex-col relative'>
+              <label>Password</label>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder='Your password'
+                className='border-b-2 border-gray-300 p-2 outline-none mb-6'
+              />
+              <span
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 bottom-8 cursor-pointer text-sm text-gray-500"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </span>
             </div>
+
+            <div className='flex flex-col relative'>
+              <label>Confirm Password</label>
+              <input
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder='Re-enter your password'
+                className='border-b-2 border-gray-300 p-2 outline-none mb-6'
+              />
+            </div>
+
 
             <button type='submit' className='w-full py-3 mb-2 font-medium bg-[#6d4fc2] text-white rounded cursor-pointer hover:bg-primary/90'>Register</button>
 
