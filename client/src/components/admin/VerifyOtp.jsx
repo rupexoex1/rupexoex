@@ -73,7 +73,7 @@ const VerifyOtp = () => {
 
 
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex items-center justify-center h-[calc(100vh-4rem)] px-8">
       <div className="w-full max-w-sm p-6 bg-white shadow-lg rounded-lg">
         <h2 className="text-xl font-bold mb-4 text-center">Verify Email</h2>
         <p className="text-sm text-gray-500 mb-6 text-center">
