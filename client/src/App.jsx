@@ -9,6 +9,9 @@ import Coin from "./components/liveCryptoCoins/Coin"
 import Register from "./components/admin/Register"
 import Login from "./components/admin/Login"
 import VerifyOtp from "./components/admin/VerifyOtp"
+import ForgotPassword from "./components/admin/ForgotPassword"
+import VerifyResetOtp from "./components/admin/VerifyResetOtp "
+import ResetPassword from "./components/admin/ResetPassword"
 
 const App = () => {
   return (
@@ -24,6 +27,9 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
       </Routes>
     </>
