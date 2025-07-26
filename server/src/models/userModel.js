@@ -20,13 +20,18 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: [6, "Password must be 6 characters"]
+      minlength: [6, "Password must be 6 characters"],
     },
     role: {
       type: String,
       enum: ["admin", "manager", "user"],
       default: "user",
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationCode: String
   },
   {
     timestamps: true,

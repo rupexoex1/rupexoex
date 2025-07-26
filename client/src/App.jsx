@@ -8,6 +8,7 @@ import Profile from "./pages/Profile"
 import Coin from "./components/liveCryptoCoins/Coin"
 import Register from "./components/admin/Register"
 import Login from "./components/admin/Login"
+import VerifyOtp from "./components/admin/VerifyOtp"
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/coin/:coinId" element={<Coin />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/login" element={<Login />} />
         </Route>
       </Routes>
