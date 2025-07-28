@@ -31,6 +31,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    tronWallet: {
+      address: {
+        type: String,
+        default: null,
+      },
+      privateKey: {
+        type: String,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,

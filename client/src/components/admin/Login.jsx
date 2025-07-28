@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
-import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const { axios, setToken } = useAppContext();
@@ -43,7 +43,7 @@ const Login = () => {
   };
 
   return (
-    <div className='flex items-center justify-center py-16'>
+    <div className='flex items-center justify-center pt-6'>
       <div className='w-full max-w-sm p-6 max-md:m-6 border bg-white border-white shadow-xl shadow-primary/15 rounded-lg'>
         <div className='flex flex-col items-center justify-center'>
 
