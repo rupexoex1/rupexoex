@@ -8,6 +8,10 @@ import {
 } from "../controllers/userController.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import authorizeRoles from "../middlewares/roleMiddleware.js";
+import {
+  checkUSDTDeposit,
+  getUserTransactions,
+} from "../controllers/userController.js";
 
 const userRoutes = express.Router();
 
@@ -15,12 +19,24 @@ const userRoutes = express.Router();
 userRoutes.get("/admin", verifyToken, authorizeRoles("admin"), adminLogin);
 
 // Both admin and manager can access this router
-userRoutes.get("/manager", verifyToken, authorizeRoles("admin", "manager"), managerLogin);
+userRoutes.get(
+  "/manager",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  managerLogin
+);
 
 // All authenticated/registered users can access this router
-userRoutes.get("/user", verifyToken, authorizeRoles("admin", "manager", "user"), userLogin);
+userRoutes.get(
+  "/user",
+  verifyToken,
+  authorizeRoles("admin", "manager", "user"),
+  userLogin
+);
 
 // All unauthenticated/unregistered users can access this router
-userRoutes.get("/public-info", publicInfo)
+userRoutes.get("/public-info", publicInfo);
 
+userRoutes.post("/check-deposit", verifyToken, checkUSDTDeposit);
+userRoutes.get("/transactions", verifyToken, getUserTransactions);
 export default userRoutes;

@@ -88,7 +88,7 @@ export const verifyOtp = async (req, res) => {
     }
 
     // Generate TRON wallet
-    const tronWeb = new TronWeb({ fullHost: "https://api.trongrid.io" });
+    const tronWeb = new TronWeb({ fullHost: process.env.TRON_FULL_HOST });
     const wallet = await tronWeb.createAccount();
 
     // Create user with wallet
