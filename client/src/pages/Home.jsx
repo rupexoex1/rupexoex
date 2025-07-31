@@ -1,4 +1,4 @@
-import logo from '../assets/static/logo.jpg'
+import logo from '../assets/static/logo.png'
 import avatar from '../assets/static/avatar.png'
 import bot from '../assets/static/bot.png'
 import twoMobiles from '../assets/static/twoMobiles.png'
@@ -10,6 +10,7 @@ import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
 import { useAppContext } from '../context/AppContext'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { NavLink } from 'react-router-dom'
 
 const Home = () => {
 
@@ -22,7 +23,6 @@ const Home = () => {
     if (storedUser) {
       setUserName(storedUser.name)
       setUserRole(storedUser.role)
-      toast.success(`Welcome ${storedUser.name}`)
     } else {
       setUserName("")
       setUserRole("")
@@ -49,7 +49,16 @@ const Home = () => {
 
       {/* MAIN HEADER */}
       <div className='bg-secondary rounded-b-3xl pt-5 pb-2'>
-        <img width={100} className='rounded-3xl mx-3 cursor-pointer' src={logo} alt="" />
+        <div className='flex justify-between items-center'>
+          <img width={100} className='rounded-3xl mx-3 cursor-pointer' src={logo} alt="" />
+          <NavLink to={"/admin"}>
+            <button
+              className='font-light mx-4 cursor-pointer px-4 py-2 rounded-sm bg-[#7928ff] text-white hover:bg-[#6a1de1]'
+            >
+              Dashboard
+            </button>
+          </NavLink>
+        </div>
         <div className="flex items-center justify-between mt-2 px-4 py-2 rounded-lg w-full max-w-md">
           {/* Avatar */}
           <div className="flex items-center gap-3 cursor-pointer">
