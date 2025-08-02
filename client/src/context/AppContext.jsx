@@ -29,7 +29,7 @@ export const AppProvider = ({ children }) => {
     const storedUser = localStorage.getItem('user');
     if (storedToken) {
       setToken(storedToken)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
       const decoded = decodeJWT(storedToken);
       if (decoded?.role) {
         setRole(decoded.role);

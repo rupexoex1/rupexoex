@@ -27,17 +27,17 @@ export const forwardUSDTToMaster = async (
 
     // Check if it succeeded
     if (receipt && receipt.receipt && receipt.receipt.result === "SUCCESS") {
-      return {
-        success: true,
-        txId: result,
-      };
-    } else {
-      return {
-        success: false,
-        error: receipt ? receipt.receipt.result : "Unknown failure",
-        txId: result,
-      };
-    }
+  return {
+    success: true,
+    txId: result,
+  };
+} else {
+  return {
+    success: false,
+    error: receipt?.receipt?.result || receipt?.contractResult || "Transaction may still be pending",
+    txId: result,
+  };
+}
   } catch (error) {
     console.error("Forwarding USDT failed:", error.message);
     return {

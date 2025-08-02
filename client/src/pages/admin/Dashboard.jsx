@@ -1,7 +1,12 @@
+import { useState } from "react";
 import { assets } from "../../assets/assets.js";
 import DashboardCard from "../../components/admin/dashboardComponents/DashboardCard.jsx";
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    todayNewUsers: 0,
+    userGrowthPercent: 0,
+  });
   return (
     <div className="min-h-screen bg-white p-10 grid grid-cols-1 md:grid-cols-3 gap-6">
       <DashboardCard
