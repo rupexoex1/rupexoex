@@ -17,12 +17,29 @@ function decodeJWT(token) {
   }
 }
 
+
+
+
 export const AppProvider = ({ children }) => {
   const navigate = useNavigate();
 
   const [token, setToken] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [basicPrice, setBasicPrice] = useState("91.50");
+  const [vipPrice, setVipPrice] = useState("94.00");
+
+  const fetchPricesFromBackend = async () => {
+    try {
+      const res = await axios.get("/api/v1/users/rates");
+      if (res.data) {
+        setBasicPrice(res.data.basic);
+        setVipPrice(res.data.vip);
+      }
+    } catch (error) {
+      console.error("Error fetching rates:", error.message);
+    }
+  };
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
@@ -39,11 +56,12 @@ export const AppProvider = ({ children }) => {
       const parsed = JSON.parse(storedUser);
       setRole(parsed?.role || null);
     }
+    fetchPricesFromBackend();
     setLoading(false);
   }, [])
 
   const value = {
-    navigate, axios, token, setToken, role, setRole, loading
+    navigate, axios, token, setToken, role, setRole, loading, basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend
   }
 
   return (

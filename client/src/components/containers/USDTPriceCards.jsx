@@ -1,14 +1,16 @@
 // components/USDTPriceCards.jsx
 import React from 'react';
 import PriceCard from './PriceCard';
+import { useAppContext } from '../../context/AppContext';
 
 const USDTPriceCards = () => {
+  const { basicPrice, vipPrice } = useAppContext();
   return (
     <div className="bg-secondary min-h-screen flex flex-col items-center justify-center rounded-xl px-4 mt-4">
       <h1 className='mb-4'>OUR PLANS</h1>
       <div className="w-full max-w-xs">
-        <PriceCard type="Basic" price="91.50" bgColor="#156BF4" />
-        <PriceCard type="VIP" price="94.00" bgColor="#F8C630" />
+        <PriceCard type="Basic" price={basicPrice} range="100$ - 5000$" bgColor="#156BF4" />
+        <PriceCard type="VIP" price={vipPrice} range="+5000$" bgColor="#F8C630" />
 
         <div className='flex justify-center'>
           <button className="w-[50%] text-white py-2 rounded font-semibold mt-2" style={{ backgroundColor: "#30B0C7" }}>
