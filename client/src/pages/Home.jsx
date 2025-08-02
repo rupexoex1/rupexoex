@@ -7,6 +7,7 @@ import ContainerOne from '../components/containers/ContainerOne'
 import ContainerTwo from '../components/containers/ContainerTwo'
 import ContainerThree from '../components/containers/ContainerThree'
 import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
+import USDTPriceCards from '../components/containers/USDTPriceCards'
 import { useAppContext } from '../context/AppContext'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -97,6 +98,7 @@ const Home = () => {
       <div className='mt-4 mx-4'>
         <ContainerOne />
         <ContainerTwo />
+        <USDTPriceCards />
         <ContainerThree />
         <ContainerThree />
         <div className='my-6 flex justify-center items-center'>
