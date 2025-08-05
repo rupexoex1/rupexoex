@@ -24,6 +24,7 @@ import OrderManagement from "./pages/admin/OrderManagement"
 import TransactionHistory from "./pages/admin/TransactionHistory"
 import RoleManagement from "./pages/admin/RoleManagement"
 import ProtectedRoute from "./components/admin/ProtectedRoute"
+import UserTransactions from "./pages/transactions/UserTransactions"
 
 
 
@@ -48,6 +49,7 @@ const App = () => {
           <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/deposit" element={<Deposit />} />
+          <Route path="/user-transactions" element={<UserTransactions />} />
         </Route>
 
 

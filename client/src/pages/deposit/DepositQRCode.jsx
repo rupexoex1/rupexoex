@@ -20,7 +20,7 @@ const DepositQRCode = ({ walletAddress }) => {
         onClick={() => {
           navigator.clipboard.writeText(walletAddress);
         }}
-        className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 text-sm"
+        className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 cursor-pointer text-sm"
       >
         Copy Address
       </button>

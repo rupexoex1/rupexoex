@@ -1,3 +1,4 @@
+import { NavLink } from "react-router-dom";
 import DepositQRCode from "../../pages/deposit/DepositQRCode";
 
 const Deposit = () => {
@@ -13,8 +14,13 @@ const Deposit = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex justify-center items-center p-6">
+    <div className="min-h-screen bg-black text-white flex justify-center items-center flex-col p-6">
       <DepositQRCode walletAddress={walletAddress} />
+      <NavLink to={"/user-transactions"}
+        className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 cursor-pointer text-sm mt-6"
+      >
+        View Transaction History
+      </NavLink>
     </div>
   );
 };
