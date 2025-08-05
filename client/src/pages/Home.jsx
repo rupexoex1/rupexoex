@@ -15,7 +15,7 @@ import { NavLink } from 'react-router-dom'
 
 const Home = () => {
 
-  const { user } = useAppContext();
+  const { user, userBalance } = useAppContext();
   const [userName, setUserName] = useState("")
   const [userRole, setUserRole] = useState("")
 
@@ -71,9 +71,15 @@ const Home = () => {
               className="w-12 h-12 rounded-full border-2 border-blue-500"
             />
             <div className="flex flex-col">
-              <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                Welcome to Rupexo
-              </h2>
+              {
+                nameWithRole == "Guest" ?
+                  <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
+                  Welcome to Rupexo
+                  </h2> :
+                  <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
+                    {userBalance?.toFixed(2)} USDT
+                  </h2>
+              }
               <p className="rich-text text-xs mb-1">{nameWithRole}</p>
             </div>
           </div>
@@ -90,6 +96,7 @@ const Home = () => {
                 className="w-10 h-10 cursor-pointer"
               />
             </a>
+
           </div>
         </div>
       </div>

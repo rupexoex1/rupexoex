@@ -17,9 +17,6 @@ function decodeJWT(token) {
   }
 }
 
-
-
-
 export const AppProvider = ({ children }) => {
   const navigate = useNavigate();
 
@@ -28,6 +25,18 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [basicPrice, setBasicPrice] = useState("91.50");
   const [vipPrice, setVipPrice] = useState("94.00");
+  const [userBalance, setUserBalance] = useState(0);
+
+  const fetchUserBalance = async () => {
+    try {
+      const res = await axios.get("/api/v1/users/balance");
+      if (res.data.success) {
+        setUserBalance(res.data.balance);
+      }
+    } catch (err) {
+      console.error("Failed to fetch balance:", err.message);
+    }
+  };
 
   const fetchPricesFromBackend = async () => {
     try {
@@ -57,11 +66,12 @@ export const AppProvider = ({ children }) => {
       setRole(parsed?.role || null);
     }
     fetchPricesFromBackend();
+    fetchUserBalance();
     setLoading(false);
   }, [])
 
   const value = {
-    navigate, axios, token, setToken, role, setRole, loading, basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend
+    navigate, axios, token, setToken, role, setRole, loading, basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend, userBalance, fetchUserBalance,
   }
 
   return (

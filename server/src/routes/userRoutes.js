@@ -7,13 +7,12 @@ import {
   managerLogin,
   publicInfo,
   userLogin,
+  checkUSDTDeposit,
+  getUserTransactions,
+  getVirtualBalance,
 } from "../controllers/userController.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import authorizeRoles from "../middlewares/roleMiddleware.js";
-import {
-  checkUSDTDeposit,
-  getUserTransactions,
-} from "../controllers/userController.js";
 import {
   getAdminStats,
   getAllTransactions,
@@ -133,6 +132,12 @@ userRoutes.get(
 );
 userRoutes.post("/check-deposit", verifyToken, checkUSDTDeposit);
 userRoutes.get("/transactions", verifyToken, getUserTransactions);
+userRoutes.get(
+  "/balance",
+  verifyToken,
+  authorizeRoles("admin", "manager", "user"),
+  getVirtualBalance
+);
 
 // All unauthenticated/unregistered users can access this router
 userRoutes.get("/public-info", publicInfo);

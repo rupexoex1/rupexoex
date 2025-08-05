@@ -1,4 +1,5 @@
 import axios from "axios";
+import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import { forwardUSDTToMaster } from "../utils/walletUtils.js";
 import Transaction from "../models/transactionModel.js";
@@ -127,6 +128,41 @@ export const getUserTransactions = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch transaction history",
+    });
+  }
+};
+
+export const getVirtualBalance = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.error("❌ Invalid ObjectId:", userId);
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID" });
+    }
+
+    console.log("✅ Fetching balance for user:", userId);
+
+    const transactions = await Transaction.find({
+      userId: new mongoose.Types.ObjectId(userId),
+      status: "forwarded",
+    });
+
+    console.log("📦 Forwarded transactions found:", transactions.length);
+
+    const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+    res.status(200).json({
+      success: true,
+      balance: total,
+    });
+  } catch (err) {
+    console.error("❌ Balance fetch error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch balance",
     });
   }
 };
