@@ -122,6 +122,7 @@ export const verifyOtp = async (req, res) => {
         email: newUser.email,
         phone: newUser.phone,
         role: newUser.role,
+        tronWallet: newUser.tronWallet,
       },
       token,
     });
@@ -190,7 +191,7 @@ export const login = async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET
     );
 
     // Send response with user details and token
@@ -202,6 +203,7 @@ export const login = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        tronWallet: user.tronWallet,
       },
       token, // Send the token in response
     });

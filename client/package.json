@@ -16,6 +16,7 @@
     "react-dom": "^19.1.0",
     "react-google-charts": "^5.2.1",
     "react-hot-toast": "^2.5.2",
+    "react-qr-code": "^2.0.18",
     "react-router-dom": "^7.7.0",
     "tailwindcss": "^4.1.11"
   },

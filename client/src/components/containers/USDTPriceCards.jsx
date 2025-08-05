@@ -2,6 +2,7 @@
 import React from 'react';
 import PriceCard from './PriceCard';
 import { useAppContext } from '../../context/AppContext';
+import { NavLink } from 'react-router-dom';
 
 const USDTPriceCards = () => {
   const { basicPrice, vipPrice } = useAppContext();
@@ -19,7 +20,7 @@ const USDTPriceCards = () => {
         </div>
 
         <div className="mt-4 flex justify-center">
-          <button className="flex flex-col items-center text-white hover:text-blue-400">
+          <NavLink to={"/deposit"} className="flex flex-col items-center text-white hover:text-blue-400">
             <div className="bg-[#1e293b] p-2 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -37,7 +38,7 @@ const USDTPriceCards = () => {
               </svg>
             </div>
             <span className="text-sm mt-1">Deposit</span>
-          </button>
+          </NavLink>
         </div>
       </div>
     </div>

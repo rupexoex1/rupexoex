@@ -13,6 +13,7 @@ import ForgotPassword from "./components/admin/ForgotPassword"
 import VerifyResetOtp from "./components/admin/VerifyResetOtp "
 import ResetPassword from "./components/admin/ResetPassword"
 import AdminLayout from "./pages/admin/AdminLayout"
+import Deposit from "./pages/deposit/Deposit"
 
 import { useAppContext } from "./context/AppContext"
 import Dashboard from "./pages/admin/Dashboard"
@@ -20,8 +21,11 @@ import UserManagement from "./pages/admin/UserManagement"
 import WalletManagement from "./pages/admin/WalletManagement"
 import RateManagement from "./pages/admin/RateManagement"
 import OrderManagement from "./pages/admin/OrderManagement"
+import TransactionHistory from "./pages/admin/TransactionHistory"
 import RoleManagement from "./pages/admin/RoleManagement"
 import ProtectedRoute from "./components/admin/ProtectedRoute"
+
+
 
 const App = () => {
   const { token } = useAppContext()
@@ -43,6 +47,7 @@ const App = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/deposit" element={<Deposit />} />
         </Route>
 
 
@@ -52,6 +57,7 @@ const App = () => {
             <Route path="user" element={<UserManagement />} />
             <Route path="wallet" element={<WalletManagement />} />
             <Route path="order" element={<OrderManagement />} />
+            <Route path="transactions" element={<TransactionHistory />} />
             <Route path="rate" element={<RateManagement />} />
             <Route path="role" element={<RoleManagement />} />
           </Route>
