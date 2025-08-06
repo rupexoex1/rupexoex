@@ -77,7 +77,7 @@ const Home = () => {
                   Welcome to Rupexo
                   </h2> :
                   <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                    {userBalance?.toFixed(2)} USDT
+                    {userBalance?.toFixed(2)} $
                   </h2>
               }
               <p className="rich-text text-xs mb-1">{nameWithRole}</p>
