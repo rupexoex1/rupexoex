@@ -27,6 +27,8 @@ export const AppProvider = ({ children }) => {
   const [vipPrice, setVipPrice] = useState("94.00");
   const [userBalance, setUserBalance] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [selectedBank, setSelectedBank] = useState(null);
+
 
   const fetchUserBalance = async () => {
     try {
@@ -72,7 +74,7 @@ export const AppProvider = ({ children }) => {
   }, [])
 
   const value = {
-    navigate, axios, token, setToken, role, setRole, loading, basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend, userBalance, fetchUserBalance, selectedPlan, setSelectedPlan
+    navigate, axios, token, setToken, role, setRole, loading, basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend, userBalance, fetchUserBalance, selectedPlan, setSelectedPlan, selectedBank, setSelectedBank
   }
 
   return (

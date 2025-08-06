@@ -28,6 +28,7 @@ import ProtectedRoute from "./components/admin/ProtectedRoute"
 import UserTransactions from "./pages/transactions/UserTransactions"
 import SelectPayee from "./pages/sell/SelectPayee"
 import AddBankAccount from "./pages/sell/AddBankAccount"
+import OrderTracking from "./pages/order/OrderTracking"
 
 
 const App = () => {
@@ -55,6 +56,7 @@ const App = () => {
           <Route path="/sell" element={<SellUSDT />} />
           <Route path="/select-payee" element={<SelectPayee />} />
           <Route path="/add-bank-account" element={<AddBankAccount />} />
+          <Route path="/order-tracking/:id" element={<OrderTracking />} />
         </Route>
 
 

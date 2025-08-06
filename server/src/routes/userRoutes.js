@@ -15,12 +15,17 @@ import {
   deleteBankAccount,
   selectBankAccount,
   getSelectedBankAccount,
+  placeOrder,
+  getUserOrders,
+  getOrderById,
 } from "../controllers/userController.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import authorizeRoles from "../middlewares/roleMiddleware.js";
 import {
   getAdminStats,
   getAllTransactions,
+  updateOrderStatus,
+  getAllOrders
 } from "../controllers/adminController.js";
 
 const userRoutes = express.Router();
@@ -127,6 +132,18 @@ userRoutes.put(
     }
   }
 );
+userRoutes.put(
+  "/admin/orders/:id",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  updateOrderStatus
+);
+userRoutes.get(
+  "/admin/orders",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  getAllOrders
+);
 
 // All authenticated/registered users can access this router
 userRoutes.get(
@@ -148,6 +165,9 @@ userRoutes.get("/accounts", verifyToken, getBankAccounts);
 userRoutes.delete("/accounts/:id", verifyToken, deleteBankAccount);
 userRoutes.put("/accounts/select/:id", verifyToken, selectBankAccount);
 userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
+userRoutes.post("/orders", verifyToken, placeOrder);
+userRoutes.get("/orders", verifyToken, getUserOrders);
+userRoutes.get("/orders/:id", verifyToken, getOrderById);
 
 // All unauthenticated/unregistered users can access this router
 userRoutes.get("/public-info", publicInfo);

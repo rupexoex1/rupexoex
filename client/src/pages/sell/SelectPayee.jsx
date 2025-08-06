@@ -6,7 +6,7 @@ import { Trash2 } from 'lucide-react';
 
 const SelectPayee = () => {
   const navigate = useNavigate();
-  const { axios, selectedPlan } = useAppContext(); // ✅ Include selectedPlan from context
+  const { axios, selectedPlan, setSelectedBank } = useAppContext(); // ✅ Include selectedPlan from context
   const [accounts, setAccounts] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
@@ -67,6 +67,7 @@ const SelectPayee = () => {
             {/* Clickable Account Info */}
             <div
               onClick={() => {
+                setSelectedBank(acc);
                 navigate('/sell', {
                   state: {
                     selectedAccount: acc,

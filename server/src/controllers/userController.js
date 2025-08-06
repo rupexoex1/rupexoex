@@ -4,6 +4,8 @@ import User from "../models/userModel.js";
 import { forwardUSDTToMaster } from "../utils/walletUtils.js";
 import Transaction from "../models/transactionModel.js";
 import BankAccount from "../models/BankAccountModel.js";
+import Order from "../models/orderModel.js";
+import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
@@ -146,18 +148,23 @@ export const getVirtualBalance = async (req, res) => {
 
     console.log("✅ Fetching balance for user:", userId);
 
+    // ✅ Step 1: Total forwarded USDT
     const transactions = await Transaction.find({
       userId: new mongoose.Types.ObjectId(userId),
       status: "forwarded",
     });
+    const totalForwarded = transactions.reduce((sum, tx) => sum + tx.amount, 0);
 
-    console.log("📦 Forwarded transactions found:", transactions.length);
+    // ✅ Step 2: Total deducted so far
+    const adjustments = await BalanceAdjustment.find({ userId });
+    const totalDeducted = adjustments.reduce((sum, adj) => sum + adj.amount, 0);
 
-    const total = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    // ✅ Step 3: Calculate available balance
+    const availableBalance = totalForwarded - totalDeducted;
 
     res.status(200).json({
       success: true,
-      balance: total,
+      balance: availableBalance,
     });
   } catch (err) {
     console.error("❌ Balance fetch error:", err);
@@ -182,7 +189,6 @@ export const addBankAccount = async (req, res) => {
   res.status(201).json({ success: true, account: newAccount });
 };
 
-// Get all accounts
 export const getBankAccounts = async (req, res) => {
   const accounts = await BankAccount.find({ userId: req.user._id }).sort({
     createdAt: -1,
@@ -190,14 +196,12 @@ export const getBankAccounts = async (req, res) => {
   res.json({ success: true, accounts });
 };
 
-// Delete account
 export const deleteBankAccount = async (req, res) => {
   const { id } = req.params;
   await BankAccount.deleteOne({ _id: id, userId: req.user._id });
   res.json({ success: true });
 };
 
-// Select account
 export const selectBankAccount = async (req, res) => {
   const userId = req.user._id;
   const { id } = req.params;
@@ -208,7 +212,6 @@ export const selectBankAccount = async (req, res) => {
   res.json({ success: true });
 };
 
-// Get selected account
 export const getSelectedBankAccount = async (req, res) => {
   const selected = await BankAccount.findOne({
     userId: req.user._id,
@@ -220,4 +223,54 @@ export const getSelectedBankAccount = async (req, res) => {
       .json({ success: false, message: "No selected payee found" });
   }
   res.json({ success: true, account: selected });
+};
+
+export const placeOrder = async (req, res) => {
+  try {
+    const { amount, inrAmount, bankAccount, plan, price } = req.body;
+
+    if (!amount || !inrAmount || !bankAccount || !plan || !price) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing fields" });
+    }
+
+    const order = await Order.create({
+      user: req.user._id,
+      amount,
+      inrAmount,
+      bankAccount,
+      plan,
+      price,
+    });
+
+    res.status(201).json({ success: true, message: "Order placed", order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to place order" });
+  }
+};
+
+export const getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user._id }).sort({
+      createdAt: -1,
+    });
+    res.json({ success: true, orders });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch orders" });
+  }
+};
+
+export const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
+    res.json({ success: true, order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch order" });
+  }
 };

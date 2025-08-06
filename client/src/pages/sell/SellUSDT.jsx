@@ -6,20 +6,40 @@ import { useAppContext } from '../../context/AppContext';
 const SellUSDT = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { plan, price, selectedAccount } = location.state || {};
-  const { userBalance } = useAppContext();
+  const { plan, selectedAccount } = location.state || {};
+  const { userBalance, axios, selectedPlan, selectedBank } = useAppContext();
 
-
+  const [price, setPrice] = useState(null); // ✅ dynamic rate
+  const [loading, setLoading] = useState(false);
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [inrAmount, setInrAmount] = useState(0);
 
-  // Redirect if user didn't come from selection page
+  // ✅ Redirect if plan is not selected
   useEffect(() => {
-    if (!plan || !price) {
+    if (!plan) {
       navigate('/');
+      return;
     }
-  }, [plan, price, navigate]);
+
+    const fetchRate = async () => {
+      try {
+        const res = await axios.get("/api/v1/users/rates");
+        if (res.data) {
+          if (plan === "Basic") {
+            setPrice(parseFloat(res.data.basic));
+          } else if (plan === "VIP") {
+            setPrice(parseFloat(res.data.vip));
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching rates:", err.message);
+        toast.error("Failed to load rate");
+      }
+    };
+
+    fetchRate();
+  }, [plan, navigate]);
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
@@ -32,36 +52,61 @@ const SellUSDT = () => {
       return;
     }
 
-    if (plan === 'Basic' && (num < 100 || num > 5000)) {
-      setError('Basic plan allows 100 to 5000 USDT only');
-      setInrAmount(0);
-      return;
-    }
+    // if (plan === 'Basic' && (num < 100 || num > 5000)) {
+    //   setError('Basic plan allows 100 to 5000 USDT only');
+    //   setInrAmount(0);
+    //   return;
+    // }
 
-    if (plan === 'VIP' && num <= 5000) {
-      setError('VIP plan allows more than 5000 USDT');
-      setInrAmount(0);
-      return;
-    }
+    // if (plan === 'VIP' && num <= 5000) {
+    //   setError('VIP plan allows more than 5000 USDT');
+    //   setInrAmount(0);
+    //   return;
+    // }
 
-    if (num > userBalance) {
-      setError('You cannot sell more than your available balance');
-      setInrAmount(0);
-      return;
-    }
+    // if (num > userBalance) {
+    //   setError('You cannot sell more than your available balance');
+    //   setInrAmount(0);
+    //   return;
+    // }
 
+    if (!price) return; // guard
     setError('');
     setInrAmount(num * price);
   };
 
-  const handleConfirm = () => {
-    if (!amount || error) {
-      toast.error('Fix errors before confirming');
+  const handleConfirm = async () => {
+    if (!amount || error || !selectedBank || !price) {
+      toast.error("Fix errors or select payee before confirming");
       return;
     }
 
-    toast.success(`Confirmed: ${amount} USDT = ₹${inrAmount}`);
-    // Proceed to API or next step
+    setLoading(true);
+    try {
+      const res = await axios.post("/api/v1/users/orders", {
+        amount: parseFloat(amount),
+        inrAmount,
+        plan,
+        price,
+        bankAccount: {
+          accountNumber: selectedBank.accountNumber,
+          ifsc: selectedBank.ifsc,
+          accountHolder: selectedBank.holderName
+        }
+      });
+
+      if (res.data.success) {
+        toast.success("Order placed successfully");
+        navigate(`/order-tracking/${res.data.order._id}`);
+      } else {
+        toast.error(res.data.message || "Failed to place order");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Server error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,28 +123,25 @@ const SellUSDT = () => {
         </svg>
       </button>
 
-
       {/* Account Info */}
-      {selectedAccount ? (
+      {selectedBank ? (
         <div className="bg-[#1e293b] w-full max-w-md rounded-lg p-4 mb-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span>Account No</span>
-            <span className="font-semibold">{selectedAccount.accountNumber}</span>
+            <span className="font-semibold">{selectedBank.accountNumber}</span>
           </div>
           <div className="flex justify-between">
             <span>IFSC</span>
-            <span className="font-semibold">{selectedAccount.ifsc}</span>
+            <span className="font-semibold">{selectedBank.ifsc}</span>
           </div>
           <div className="flex justify-between">
             <span>Account Name</span>
-            <span className="font-semibold">{selectedAccount.holderName}</span>
+            <span className="font-semibold">{selectedBank.holderName}</span>
           </div>
         </div>
       ) : (
-        <p className="text-sm text-red-400 mb-4">No payee selected.</p>
+        <div className="text-sm text-red-400 mb-3">No payee selected</div>
       )}
-
-
 
       {/* Amount Input */}
       <div className="bg-[#1e293b] w-full max-w-md rounded-lg p-4 space-y-3 text-sm mb-4">
@@ -123,17 +165,18 @@ const SellUSDT = () => {
               {userBalance?.toFixed(2)} USDT
             </span>
           </span>
-          <span>
-            1 USDT = <span className="text-green-400">{price} ₹</span>
-          </span>
+          {price && (
+            <span>
+              1 USDT = <span className="text-green-400">{price} ₹</span>
+            </span>
+          )}
         </div>
 
-        {userBalance < 100 && (
+        {/* {userBalance < 100 && (
           <div className="text-red-400 text-xs mt-1">
             You cannot sell below 100 USDT
           </div>
-        )}
-
+        )} */}
 
         <div className="text-md font-semibold mt-1">
           You will receive: <span className="text-green-400">{inrAmount || 0} ₹</span>
@@ -159,13 +202,13 @@ const SellUSDT = () => {
       {/* Confirm Button */}
       <button
         onClick={handleConfirm}
-        disabled={!!error || !amount}
-        className={`w-full max-w-md py-3 rounded font-semibold text-white ${!!error || !amount
+        disabled={!!error || !amount || !price}
+        className={`w-full max-w-md py-3 rounded font-semibold text-white ${!!error || !amount || !price
           ? 'bg-gray-600 cursor-not-allowed'
           : 'bg-blue-600 hover:bg-blue-700'
           }`}
       >
-        Confirm
+        {loading ? 'Placing Order...' : 'Confirm'}
       </button>
     </div>
   );
