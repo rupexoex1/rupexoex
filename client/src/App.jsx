@@ -14,6 +14,7 @@ import VerifyResetOtp from "./components/admin/VerifyResetOtp "
 import ResetPassword from "./components/admin/ResetPassword"
 import AdminLayout from "./pages/admin/AdminLayout"
 import Deposit from "./pages/deposit/Deposit"
+import SellUSDT from "./pages/sell/SellUSDT"
 
 import { useAppContext } from "./context/AppContext"
 import Dashboard from "./pages/admin/Dashboard"
@@ -25,7 +26,8 @@ import TransactionHistory from "./pages/admin/TransactionHistory"
 import RoleManagement from "./pages/admin/RoleManagement"
 import ProtectedRoute from "./components/admin/ProtectedRoute"
 import UserTransactions from "./pages/transactions/UserTransactions"
-
+import SelectPayee from "./pages/sell/SelectPayee"
+import AddBankAccount from "./pages/sell/AddBankAccount"
 
 
 const App = () => {
@@ -50,6 +52,9 @@ const App = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/deposit" element={<Deposit />} />
           <Route path="/user-transactions" element={<UserTransactions />} />
+          <Route path="/sell" element={<SellUSDT />} />
+          <Route path="/select-payee" element={<SelectPayee />} />
+          <Route path="/add-bank-account" element={<AddBankAccount />} />
         </Route>
 
 

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import { forwardUSDTToMaster } from "../utils/walletUtils.js";
 import Transaction from "../models/transactionModel.js";
+import BankAccount from "../models/BankAccountModel.js";
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
@@ -165,4 +166,58 @@ export const getVirtualBalance = async (req, res) => {
       message: "Failed to fetch balance",
     });
   }
+};
+
+export const addBankAccount = async (req, res) => {
+  const { accountNumber, ifsc, holderName } = req.body;
+  const userId = req.user._id;
+
+  const newAccount = await BankAccount.create({
+    userId,
+    accountNumber,
+    ifsc,
+    holderName,
+  });
+
+  res.status(201).json({ success: true, account: newAccount });
+};
+
+// Get all accounts
+export const getBankAccounts = async (req, res) => {
+  const accounts = await BankAccount.find({ userId: req.user._id }).sort({
+    createdAt: -1,
+  });
+  res.json({ success: true, accounts });
+};
+
+// Delete account
+export const deleteBankAccount = async (req, res) => {
+  const { id } = req.params;
+  await BankAccount.deleteOne({ _id: id, userId: req.user._id });
+  res.json({ success: true });
+};
+
+// Select account
+export const selectBankAccount = async (req, res) => {
+  const userId = req.user._id;
+  const { id } = req.params;
+
+  await BankAccount.updateMany({ userId }, { isSelected: false });
+  await BankAccount.findByIdAndUpdate(id, { isSelected: true });
+
+  res.json({ success: true });
+};
+
+// Get selected account
+export const getSelectedBankAccount = async (req, res) => {
+  const selected = await BankAccount.findOne({
+    userId: req.user._id,
+    isSelected: true,
+  });
+  if (!selected) {
+    return res
+      .status(404)
+      .json({ success: false, message: "No selected payee found" });
+  }
+  res.json({ success: true, account: selected });
 };

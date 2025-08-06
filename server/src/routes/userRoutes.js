@@ -10,6 +10,11 @@ import {
   checkUSDTDeposit,
   getUserTransactions,
   getVirtualBalance,
+  addBankAccount,
+  getBankAccounts,
+  deleteBankAccount,
+  selectBankAccount,
+  getSelectedBankAccount,
 } from "../controllers/userController.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import authorizeRoles from "../middlewares/roleMiddleware.js";
@@ -138,6 +143,11 @@ userRoutes.get(
   authorizeRoles("admin", "manager", "user"),
   getVirtualBalance
 );
+userRoutes.post("/accounts", verifyToken, addBankAccount);
+userRoutes.get("/accounts", verifyToken, getBankAccounts);
+userRoutes.delete("/accounts/:id", verifyToken, deleteBankAccount);
+userRoutes.put("/accounts/select/:id", verifyToken, selectBankAccount);
+userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
 
 // All unauthenticated/unregistered users can access this router
 userRoutes.get("/public-info", publicInfo);

@@ -1,21 +1,30 @@
-// components/PriceCard.jsx
 import React from 'react';
 
-const PriceCard = ({ type, price, range, bgColor }) => {
+const PriceCard = ({ type, price, range, bgColor, isSelected, onSelect }) => {
   return (
     <div className="bg-[#151d2e] rounded-lg p-4 mb-4 text-white shadow relative">
       <h1>{price}₹</h1>
       <div className="flex justify-between items-center">
-        <span className="text-white text-xs px-2 py-1 rounded"
-          style={{ backgroundColor: bgColor }}>
+        <span
+          className="text-white text-xs px-2 py-1 rounded"
+          style={{ backgroundColor: bgColor }}
+        >
           {type}
         </span>
         <button className="text-white text-l font-light">{range}</button>
       </div>
       <p className="text-sm mt-1">1 USDT = {price}₹</p>
-      <button className="mt-4 w-full hover:bg-blue-700 text-white py-2 rounded font-semibold" style={{backgroundColor: bgColor}}>
-        Select
+      <button
+        onClick={onSelect}
+        className={`mt-4 w-full text-white py-2 rounded font-semibold transition-all
+    ${isSelected ? 'bg-gray-500 cursor-not-allowed' : 'hover:bg-blue-700'}
+  `}
+        style={{ backgroundColor: isSelected ? '#555' : bgColor }}
+      >
+        {isSelected ? 'Selected' : 'Select'}
       </button>
+
+
     </div>
   );
 };
