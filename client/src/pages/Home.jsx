@@ -10,7 +10,6 @@ import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
 import USDTPriceCards from '../components/containers/USDTPriceCards'
 import { useAppContext } from '../context/AppContext'
 import { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
 import { NavLink } from 'react-router-dom'
 
 const Home = () => {

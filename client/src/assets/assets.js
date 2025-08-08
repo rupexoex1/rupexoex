@@ -34,7 +34,12 @@ import dashboard_icon_4 from "./dashboard_icon_4.svg";
 import role_management from "./role_management.svg";
 import people from "./people.svg";
 import badge from "./badge.svg";
-import star from './star.svg'
+import star from "./star.svg";
+import exchange_tab from "./exchange_tab.svg";
+import recent_transaction from "./recent_transaction.svg";
+import bank_account from "./bank_account.svg";
+import reset_transaction from "./reset_transaction.svg";
+import withdraw from "./withdraw.svg";
 
 export const assets = {
   facebook_icon,
@@ -63,5 +68,10 @@ export const assets = {
   role_management,
   people,
   badge,
-  star
+  star,
+  exchange_tab,
+  recent_transaction,
+  bank_account,
+  reset_transaction,
+  withdraw,
 };
