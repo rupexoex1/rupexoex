@@ -25,7 +25,7 @@ import {
   getAdminStats,
   getAllTransactions,
   updateOrderStatus,
-  getAllOrders
+  getAllOrders,
 } from "../controllers/adminController.js";
 
 const userRoutes = express.Router();
@@ -168,10 +168,7 @@ userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
 userRoutes.post("/orders", verifyToken, placeOrder);
 userRoutes.get("/orders", verifyToken, getUserOrders);
 userRoutes.get("/orders/:id", verifyToken, getOrderById);
-
-// All unauthenticated/unregistered users can access this router
-userRoutes.get("/public-info", publicInfo);
-userRoutes.get("/rates", async (req, res) => {
+userRoutes.get("/rates", verifyToken, async (req, res) => {
   try {
     let rate = await Rate.findOne();
     if (!rate) {
@@ -182,5 +179,8 @@ userRoutes.get("/rates", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch rates" });
   }
 });
+
+// All unauthenticated/unregistered users can access this router
+userRoutes.get("/public-info", publicInfo);
 
 export default userRoutes;

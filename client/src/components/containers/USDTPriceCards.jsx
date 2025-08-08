@@ -9,16 +9,22 @@ const USDTPriceCards = () => {
     basicPrice,
     vipPrice,
     selectedPlan,
-    setSelectedPlan, // ✅ using global context
+    setSelectedPlan,
+    token, // ✅ Get token from context
   } = useAppContext();
 
   const navigate = useNavigate();
 
   const handleSelect = (plan) => {
-    setSelectedPlan((prev) => (prev === plan ? null : plan)); // Toggle selection
+    setSelectedPlan((prev) => (prev === plan ? null : plan));
   };
 
   const handleSellClick = () => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     if (!selectedPlan) {
       toast.error("Select Plan First");
       return;
@@ -32,6 +38,15 @@ const USDTPriceCards = () => {
         price: selectedPrice,
       },
     });
+  };
+
+  const handleDepositClick = (e) => {
+    e.preventDefault(); // prevent NavLink default
+    if (!token) {
+      navigate("/login");
+    } else {
+      navigate("/deposit");
+    }
   };
 
   return (
@@ -68,7 +83,10 @@ const USDTPriceCards = () => {
         </div>
 
         <div className="mt-4 flex justify-center">
-          <NavLink to="/deposit" className="flex flex-col items-center text-white hover:text-blue-400">
+          <button
+            onClick={handleDepositClick}
+            className="flex flex-col items-center text-white hover:text-blue-400"
+          >
             <div className="bg-[#1e293b] p-2 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -81,7 +99,7 @@ const USDTPriceCards = () => {
               </svg>
             </div>
             <span className="text-sm mt-1">Deposit</span>
-          </NavLink>
+          </button>
         </div>
       </div>
     </div>
