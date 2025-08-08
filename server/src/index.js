@@ -4,15 +4,13 @@ import cors from "cors";
 import dbConnect from "./config/dbConnect.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import { startDepositCron } from "./cronJobs/depositChecker.js";
 
 dbConnect();
 const app = express();
 
 // All frontend from port 5173
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://rupexo.vercel.app",
-];
+const allowedOrigins = ["http://localhost:5173", "https://rupexo.vercel.app"];
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -28,6 +26,7 @@ app.use(
 
 // Middlewares
 app.use(express.json());
+startDepositCron();
 
 // Routes
 app.use("/api/v1/auth", authRoutes);

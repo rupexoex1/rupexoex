@@ -230,23 +230,65 @@ export const placeOrder = async (req, res) => {
     const { amount, inrAmount, bankAccount, plan, price } = req.body;
 
     if (!amount || !inrAmount || !bankAccount || !plan || !price) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Missing fields" });
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
     }
 
+    const userId = req.user._id;
+
+    // ✅ Step 1: Check virtual balance
+    const transactions = await Transaction.find({
+      userId,
+      status: "forwarded",
+    });
+
+    const adjustments = await BalanceAdjustment.find({ userId });
+
+    const totalForwarded = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+    const totalDeducted = adjustments.reduce((sum, adj) => sum + adj.amount, 0);
+    const availableBalance = totalForwarded - totalDeducted;
+
+    if (availableBalance < amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance to place order",
+      });
+    }
+
+    // ✅ Step 2: Place order with status = "confirmed"
     const order = await Order.create({
-      user: req.user._id,
+      user: userId,
       amount,
       inrAmount,
       bankAccount,
       plan,
       price,
+      status: "confirmed", // confirmed at time of placement
+      completedAt: new Date(),
     });
 
-    res.status(201).json({ success: true, message: "Order placed", order });
+    // ✅ Step 3: Deduct balance immediately
+    await new BalanceAdjustment({
+      userId,
+      amount,
+      type: "deduct",
+      reason: "Order placed",
+      orderId: order._id,
+    }).save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Order placed and balance deducted",
+      order,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to place order" });
+    console.error("❌ Order placement error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error during order placement",
+    });
   }
 };
 

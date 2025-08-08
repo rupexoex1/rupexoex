@@ -87,49 +87,81 @@ export const updateOrderStatus = async (req, res) => {
         .json({ success: false, message: "Order not found" });
     }
 
-    // ✅ Handle completion + optional deduction logic
-    if (
-      (status === "confirmed" || status === "failed") &&
-      order.status === "pending"
-    ) {
-      if (status === "confirmed") {
-        const userId = order.user;
+    // ✅ Lock: Only allow one status update (from pending)
+    if (order.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Order has already been marked as '${order.status}' and cannot be updated again`,
+      });
+    }
 
+    if (status !== "confirmed" && status !== "failed") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Only 'confirmed' or 'failed' are allowed",
+      });
+    }
+
+    const alreadyDeducted = await BalanceAdjustment.findOne({
+      orderId: order._id,
+      type: "deduct",
+    });
+
+    // ✅ Confirming the order
+    if (status === "confirmed") {
+      if (!alreadyDeducted) {
+        // Check balance before deduction
         const transactions = await Transaction.find({
-          userId,
+          userId: order.user,
           status: "forwarded",
         });
 
-        const virtualBalance = transactions.reduce(
+        const adjustments = await BalanceAdjustment.find({
+          userId: order.user,
+        });
+
+        const totalForwarded = transactions.reduce(
           (sum, tx) => sum + tx.amount,
           0
         );
+        const totalDeducted = adjustments.reduce(
+          (sum, adj) => sum + adj.amount,
+          0
+        );
+        const availableBalance = totalForwarded - totalDeducted;
 
-        if (order.amount > virtualBalance) {
+        // ❌ Block if balance is insufficient (prevents going below 0)
+        if (order.amount > availableBalance) {
           return res.status(400).json({
             success: false,
             message: "Insufficient balance to confirm this order",
           });
         }
 
+        // ✅ Deduct only once
         await new BalanceAdjustment({
-          userId,
+          userId: order.user,
           amount: order.amount,
           type: "deduct",
+          reason: "Admin confirmed order",
           orderId: order._id,
         }).save();
       }
-
-      order.completedAt = new Date(); // ✅ This will work for both confirmed & failed
     }
 
-    // ✅ Save new status
+    // ✅ If failed — no deduction, no refund
+    // (Only one update allowed, so refund scenario doesn’t apply)
+
+    // ✅ Mark status + timestamp
     order.status = status;
+    order.completedAt = new Date();
     await order.save();
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Order updated", order });
+    return res.status(200).json({
+      success: true,
+      message: `Order marked as '${status}' successfully`,
+      order,
+    });
   } catch (err) {
     console.error("Order status update error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
