@@ -10,7 +10,7 @@ dbConnect();
 const app = express();
 
 // All frontend from port 5173
-const allowedOrigins = ["http://localhost:5173", "https://rupexo.vercel.app"];
+const allowedOrigins = ["http://localhost:5173", "https://rupexo.vercel.app", "https://rupexoex-dev.salite.site"];
 app.use(
   cors({
     origin: function (origin, callback) {
