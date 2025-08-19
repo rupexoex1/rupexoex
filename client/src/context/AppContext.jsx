@@ -49,7 +49,7 @@ export const AppProvider = ({ children }) => {
         setVipPrice(res.data.vip);
       }
     } catch (error) {
-      console.error("Error fetching current rates:", error.message);
+      console.error("Error fetching rates:", error.message);
     }
   };
 
