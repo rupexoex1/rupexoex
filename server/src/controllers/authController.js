@@ -7,6 +7,11 @@ import User from "../models/userModel.js";
 const pendingUsers = new Map();
 const passwordResetRequests = new Map();
 
+// ---- Helper (NEW) ----
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
 export const register = async (req, res) => {
   try {
     const { name, email, phone, password, role } = req.body;
@@ -18,8 +23,11 @@ export const register = async (req, res) => {
         .json({ success: false, message: "All fields are required" });
     }
 
+    // 🔧 CHANGE: normalize email
+    const emailNorm = normalizeEmail(email);
+
     // Check if email already registered
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: emailNorm });
     if (existingUser) {
       return res
         .status(400)
@@ -27,7 +35,7 @@ export const register = async (req, res) => {
     }
 
     // Check if already in pending
-    if (pendingUsers.has(email)) {
+    if (pendingUsers.has(emailNorm)) {
       return res.status(400).json({
         success: false,
         message: "OTP already sent to this email. Please verify.",
@@ -37,8 +45,8 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Store in pending map
-    pendingUsers.set(email, {
+    // 🔧 CHANGE: store by normalized email
+    pendingUsers.set(emailNorm, {
       name,
       phone,
       password: hashedPassword,
@@ -47,12 +55,15 @@ export const register = async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000,
     });
 
-    // Send OTP via email
+    // Send OTP via email (use the raw email or emailNorm—both will deliver)
     await sendEmail(
-      email,
+      emailNorm,
       "Verify Your Email",
       `<h2>Your OTP is: ${otp}</h2><p>This OTP will expire in 10 minutes.</p>`
     );
+
+    // (Optional) debug
+    console.log("register -> pendingUsers keys:", [...pendingUsers.keys()]);
 
     res.status(200).json({ success: true, message: "OTP sent to email" });
   } catch (error) {
@@ -63,10 +74,19 @@ export const register = async (req, res) => {
 
 export const verifyOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    let { email, otp } = req.body;
 
-    // Check pending
-    const pending = pendingUsers.get(email);
+    // 🔧 CHANGE: normalize + coerce OTP to string
+    const emailNorm = normalizeEmail(email);
+    otp = String(otp || "").trim();
+
+    // 🔧 CHANGE: get by normalized email
+    const pending = pendingUsers.get(emailNorm);
+
+    // (Optional) debug
+    console.log("verifyOtp body:", { email: emailNorm, otp });
+    console.log("verifyOtp -> pendingUsers keys:", [...pendingUsers.keys()]);
+
     if (!pending) {
       return res.status(400).json({
         success: false,
@@ -75,15 +95,15 @@ export const verifyOtp = async (req, res) => {
     }
 
     if (Date.now() > pending.expiresAt) {
-      pendingUsers.delete(email);
+      pendingUsers.delete(emailNorm);
       return res.status(400).json({
         success: false,
         message: "OTP expired. Please register again.",
       });
     }
 
-    // Compare OTP
-    if (pending.otp !== otp) {
+    // 🔧 CHANGE: compare as strings
+    if (String(pending.otp) !== otp) {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
 
@@ -94,19 +114,19 @@ export const verifyOtp = async (req, res) => {
     // Create user with wallet
     const newUser = new User({
       name: pending.name,
-      email,
+      email: emailNorm, // 🔧 store normalized
       phone: pending.phone,
       password: pending.password,
       role: pending.role,
       isVerified: true,
       tronWallet: {
         address: wallet.address.base58,
-        privateKey: wallet.privateKey, // encrypt this before storing in prod
+        privateKey: wallet.privateKey, // encrypt in prod
       },
     });
 
     await newUser.save();
-    pendingUsers.delete(email); // Clean up
+    pendingUsers.delete(emailNorm); // Clean up
 
     // Generate JWT
     const token = jwt.sign(
@@ -133,22 +153,23 @@ export const verifyOtp = async (req, res) => {
 };
 
 export const resendOtp = async (req, res) => {
-  const { email } = req.body;
-  const pending = pendingUsers.get(email);
+  // 🔧 CHANGE: normalize email
+  const emailNorm = normalizeEmail(req.body.email);
+  const pending = pendingUsers.get(emailNorm);
 
   if (!pending) {
     return res.status(404).json({
       success: false,
       message: "No registration found. Please register again.",
     });
-  }
+    }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   pending.otp = otp;
   pending.expiresAt = Date.now() + 10 * 60 * 1000;
 
   await sendEmail(
-    email,
+    emailNorm,
     "Resend OTP",
     `<h2>Your new OTP is: ${otp}</h2><p>It expires in 10 minutes.</p>`
   );
@@ -157,20 +178,18 @@ export const resendOtp = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    // Gets user data in request
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const emailNorm = normalizeEmail(req.body.email); // 🔧
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Find user by normalized email
+    const user = await User.findOne({ email: emailNorm });
 
-    // If the email is unregistered
     if (!user) {
       return res
         .status(400)
         .json({ success: false, message: "User not found" });
     }
 
-    // If the user is unverified
     if (!user.isVerified) {
       return res.status(403).json({
         success: false,
@@ -178,23 +197,18 @@ export const login = async (req, res) => {
       });
     }
 
-    // Compare the password with hashed password stored in DB
     const isMatch = await bcrypt.compare(password, user.password);
-
-    // If password is incorrect
     if (!isMatch) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid credentials" });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET
     );
 
-    // Send response with user details and token
     res.status(200).json({
       success: true,
       message: `Welcome back, ${user.name}`,
@@ -205,7 +219,7 @@ export const login = async (req, res) => {
         role: user.role,
         tronWallet: user.tronWallet,
       },
-      token, // Send the token in response
+      token,
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -217,9 +231,10 @@ export const login = async (req, res) => {
 };
 
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  // 🔧 CHANGE: normalize email
+  const emailNorm = normalizeEmail(req.body.email);
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: emailNorm });
   if (!user) {
     return res.status(404).json({
       success: false,
@@ -229,13 +244,14 @@ export const forgotPassword = async (req, res) => {
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  passwordResetRequests.set(email, {
+  // 🔧 CHANGE: use normalized key
+  passwordResetRequests.set(emailNorm, {
     otp,
-    expiresAt: Date.now() + 10 * 60 * 1000, // 10 min expiry
+    expiresAt: Date.now() + 10 * 60 * 1000,
   });
 
   await sendEmail(
-    email,
+    emailNorm,
     "Reset Password OTP",
     `<h2>Your OTP to reset password is: ${otp}</h2><p>It will expire in 10 minutes.</p>`
   );
@@ -247,9 +263,11 @@ export const forgotPassword = async (req, res) => {
 };
 
 export const verifyResetOtp = async (req, res) => {
-  const { email, otp } = req.body;
+  // 🔧 CHANGE: normalize + coerce
+  const emailNorm = normalizeEmail(req.body.email);
+  const otp = String(req.body.otp || "").trim();
 
-  const request = passwordResetRequests.get(email);
+  const request = passwordResetRequests.get(emailNorm);
   if (!request) {
     return res.status(400).json({
       success: false,
@@ -258,14 +276,14 @@ export const verifyResetOtp = async (req, res) => {
   }
 
   if (Date.now() > request.expiresAt) {
-    passwordResetRequests.delete(email);
+    passwordResetRequests.delete(emailNorm);
     return res.status(400).json({
       success: false,
       message: "OTP expired. Please request a new one.",
     });
   }
 
-  if (request.otp !== otp) {
+  if (String(request.otp) !== otp) {
     return res.status(400).json({
       success: false,
       message: "Invalid OTP. Please check and try again.",
@@ -279,9 +297,11 @@ export const verifyResetOtp = async (req, res) => {
 };
 
 export const resetPassword = async (req, res) => {
-  const { email, newPassword } = req.body;
+  // 🔧 CHANGE: normalize
+  const emailNorm = normalizeEmail(req.body.email);
+  const { newPassword } = req.body;
 
-  const request = passwordResetRequests.get(email);
+  const request = passwordResetRequests.get(emailNorm);
   if (!request) {
     return res.status(400).json({
       success: false,
@@ -289,7 +309,7 @@ export const resetPassword = async (req, res) => {
     });
   }
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email: emailNorm });
   if (!user) {
     return res.status(404).json({
       success: false,
@@ -301,7 +321,7 @@ export const resetPassword = async (req, res) => {
   user.password = hashedPassword;
   await user.save();
 
-  passwordResetRequests.delete(email);
+  passwordResetRequests.delete(emailNorm);
 
   res.status(200).json({
     success: true,
