@@ -3,6 +3,8 @@ import { useAppContext } from '../../context/AppContext';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
+const normalizeEmail = (e = "") => e.trim().toLowerCase();
+
 const Register = () => {
   const { axios, navigate } = useAppContext();
 
@@ -12,32 +14,40 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     if (password !== confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
 
+    const normEmail = normalizeEmail(email);
+
+    setLoading(true);
     try {
       const res = await axios.post('/api/v1/auth/register', {
         name,
         phone,
-        email,
+        email: normEmail,
         password,
         role: 'user',
       });
 
       if (res.data.success) {
         toast.success(res.data.message || 'OTP sent to your email!');
-        navigate(`/verify-otp?email=${email}`);
+        // ✅ pass normalized email forward
+        navigate(`/verify-otp?email=${encodeURIComponent(normEmail)}`);
       } else {
         toast.error(res.data.message || 'Registration failed');
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,9 +133,10 @@ const Register = () => {
 
             <button
               type="submit"
-              className="w-full py-3 mb-2 font-medium bg-[#6d4fc2] text-white rounded cursor-pointer hover:bg-primary/90"
+              className="w-full py-3 mb-2 font-medium bg-[#6d4fc2] text-white rounded cursor-pointer hover:bg-primary/90 disabled:opacity-60"
+              disabled={loading}
             >
-              Register
+              {loading ? "Sending OTP..." : "Register"}
             </button>
 
             <p className="text-center mt-2">

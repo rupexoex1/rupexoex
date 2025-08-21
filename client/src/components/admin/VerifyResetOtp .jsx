@@ -3,10 +3,14 @@ import { useAppContext } from "../../context/AppContext";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
+const normalizeEmail = (e = "") => e.trim().toLowerCase();
+
 const VerifyResetOtp = () => {
   const { axios, navigate } = useAppContext();
   const [searchParams] = useSearchParams();
-  const email = searchParams.get("email");
+
+  const emailParam = searchParams.get("email") || "";
+  const email = normalizeEmail(emailParam);
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,18 +19,29 @@ const VerifyResetOtp = () => {
 
   const handleVerify = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
+    if (!email) {
+      toast.error("Missing email. Please start again.");
+      return;
+    }
+    if (otp.length !== 6) {
+      toast.error("Please enter 6-digit OTP");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await axios.post("/api/v1/auth/verify-reset-otp", {
         email,
-        otp,
+        otp: String(otp),
       });
 
       if (res.data.success) {
-        toast.success(res.data.message);
-        navigate(`/reset-password?email=${email}`);
+        toast.success(res.data.message || "OTP verified");
+        navigate(`/reset-password?email=${encodeURIComponent(email)}`);
       } else {
-        toast.error(res.data.message);
+        toast.error(res.data.message || "Verification failed");
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Verification failed");
@@ -37,28 +52,25 @@ const VerifyResetOtp = () => {
 
   const handleResendOtp = async () => {
     try {
-      const res = await axios.post("/api/v1/auth/forget-password", { email });
+      // ✅ correct route: /forgot-password
+      const res = await axios.post("/api/v1/auth/forgot-password", { email });
       if (res.data.success) {
-        toast.success("OTP resent successfully");
+        toast.success(res.data.message || "OTP resent successfully");
         setTimeLeft(60);
         setShowResend(false);
       }
     } catch (error) {
-      toast.error("Failed to resend OTP");
+      toast.error(error?.response?.data?.message || "Failed to resend OTP");
     }
   };
 
   useEffect(() => {
-    let interval;
-    if (timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    } else {
+    if (!timeLeft) {
       setShowResend(true);
+      return;
     }
-
-    return () => clearInterval(interval);
+    const id = setInterval(() => setTimeLeft((p) => p - 1), 1000);
+    return () => clearInterval(id);
   }, [timeLeft]);
 
   return (
@@ -77,15 +89,17 @@ const VerifyResetOtp = () => {
           placeholder="Enter OTP"
           className="w-full p-2 border rounded mb-4"
           value={otp}
-          onChange={(e) => setOtp(e.target.value)}
+          onChange={(e) => setOtp(e.target.value.replace(/[^\d]/g, ""))}
           required
+          inputMode="numeric"
+          pattern="\d*"
           maxLength={6}
         />
 
         <button
           type="submit"
-          className="w-full py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-          disabled={loading}
+          className="w-full py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
+          disabled={loading || otp.length !== 6}
         >
           {loading ? "Verifying..." : "Verify OTP"}
         </button>

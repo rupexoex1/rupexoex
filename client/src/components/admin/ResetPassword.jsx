@@ -3,23 +3,25 @@ import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "../../context/AppContext";
 import toast from "react-hot-toast";
 
+const normalizeEmail = (e = "") => e.trim().toLowerCase();
+
 const ResetPassword = () => {
   const { axios, navigate } = useAppContext();
   const [searchParams] = useSearchParams();
-  const email = searchParams.get("email");
+  const emailParam = searchParams.get("email") || "";
+  const email = normalizeEmail(emailParam);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [showPassword, setShowPassword] = useState(false); // 🔑 One toggle for both fields
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleReset = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
-    if (newPassword !== confirmPassword) {
-      return toast.error("Passwords do not match");
-    }
+    if (!email) return toast.error("Missing email, please restart the flow.");
+    if (newPassword !== confirmPassword) return toast.error("Passwords do not match");
 
     setLoading(true);
     try {
@@ -29,7 +31,7 @@ const ResetPassword = () => {
       });
 
       if (res.data.success) {
-        toast.success("Password reset successful");
+        toast.success(res.data.message || "Password reset successful");
         navigate("/login");
       } else {
         toast.error(res.data.message || "Reset failed");
@@ -49,7 +51,6 @@ const ResetPassword = () => {
       >
         <h2 className="text-xl font-bold mb-4 text-center">Reset Password</h2>
 
-        {/* New Password Field */}
         <div className="relative mb-4">
           <input
             type={showPassword ? "text" : "password"}
@@ -67,7 +68,6 @@ const ResetPassword = () => {
           </span>
         </div>
 
-        {/* Confirm Password Field */}
         <div className="relative mb-6">
           <input
             type={showPassword ? "text" : "password"}
@@ -81,7 +81,7 @@ const ResetPassword = () => {
 
         <button
           type="submit"
-          className="w-full py-2 bg-[#6d4fc2] text-white rounded hover:bg-[#5a3fb5]"
+          className="w-full py-2 bg-[#6d4fc2] text-white rounded hover:bg-[#5a3fb5] disabled:opacity-60"
           disabled={loading}
         >
           {loading ? "Resetting..." : "Reset Password"}

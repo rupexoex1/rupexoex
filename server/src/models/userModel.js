@@ -2,21 +2,16 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-    },
+    name: { type: String, required: true },
     email: {
       type: String,
       required: true,
       unique: true,
+      trim: true,
+      lowercase: true, // auto-normalize on save
       match: [/^\S+@\S+\.\S+$/, "Please enter a valid email address"],
     },
-    phone: {
-      type: String,
-      required: true,
-      unique: true,
-    },
+    phone: { type: String, required: true, unique: true },
     password: {
       type: String,
       required: true,
@@ -27,30 +22,15 @@ const userSchema = new mongoose.Schema(
       enum: ["admin", "manager", "user"],
       default: "user",
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
+    isVerified: { type: Boolean, default: false },
     tronWallet: {
-      address: {
-        type: String,
-        default: null,
-      },
-      privateKey: {
-        type: String,
-        default: null,
-      },
+      address: { type: String, default: null },
+      privateKey: { type: String, default: null },
     },
-    balance: {
-      type: Number,
-      default: 0,
-    },
+    balance: { type: Number, default: 0 },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;

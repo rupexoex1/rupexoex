@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 import toast from "react-hot-toast";
 
+const normalizeEmail = (e = "") => e.trim().toLowerCase();
+
 const ForgotPassword = () => {
   const { axios, navigate } = useAppContext();
   const [email, setEmail] = useState("");
@@ -9,16 +11,22 @@ const ForgotPassword = () => {
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (loading) return;
 
+    const normEmail = normalizeEmail(email);
+    if (!normEmail) return toast.error("Please enter your email");
+
+    setLoading(true);
     try {
-      const res = await axios.post("/api/v1/auth/forget-password", { email });
+      // ✅ backend route should be /forgot-password (not /forget-password)
+      const res = await axios.post("/api/v1/auth/forgot-password", { email: normEmail });
 
       if (res.data.success) {
-        toast.success(res.data.message);
-        navigate(`/verify-reset-otp?email=${email}`);
+        toast.success(res.data.message || "OTP sent to your email");
+        // ✅ pass normalized email forward
+        navigate(`/verify-reset-otp?email=${encodeURIComponent(normEmail)}`);
       } else {
-        toast.error(res.data.message);
+        toast.error(res.data.message || "Failed to send OTP");
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Something went wrong");
@@ -44,7 +52,7 @@ const ForgotPassword = () => {
         />
         <button
           type="submit"
-          className="w-full py-2 bg-[#6d4fc2] text-white rounded hover:bg-indigo-700"
+          className="w-full py-2 bg-[#6d4fc2] text-white rounded hover:bg-indigo-700 disabled:opacity-60"
           disabled={loading}
         >
           {loading ? "Sending..." : "Send OTP"}
