@@ -172,11 +172,11 @@ const SellUSDT = () => {
           )}
         </div>
 
-        {userBalance < 100 && (
+        {/* {userBalance < 100 && (
           <div className="text-red-400 text-xs mt-1">
             You cannot sell below 100 USDT
           </div>
-        )}
+        )} */}
 
         <div className="text-md font-semibold mt-1">
           You will receive: <span className="text-green-400">{inrAmount || 0} ₹</span>
