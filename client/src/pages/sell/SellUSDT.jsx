@@ -52,11 +52,11 @@ const SellUSDT = () => {
       return;
     }
 
-    if (plan === 'Basic' && (num < 100 || num > 5000)) {
-      setError('Basic plan allows 100 to 5000 USDT only');
-      setInrAmount(0);
-      return;
-    }
+    // if (plan === 'Basic' && (num < 100 || num > 5000)) {
+    //   setError('Basic plan allows 100 to 5000 USDT only');
+    //   setInrAmount(0);
+    //   return;
+    // }
 
     if (plan === 'VIP' && num <= 5000) {
       setError('VIP plan allows more than 5000 USDT');
