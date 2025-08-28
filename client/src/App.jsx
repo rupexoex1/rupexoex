@@ -29,7 +29,8 @@ import UserTransactions from "./pages/transactions/UserTransactions"
 import SelectPayee from "./pages/sell/SelectPayee"
 import AddBankAccount from "./pages/sell/AddBankAccount"
 import OrderTracking from "./pages/order/OrderTracking"
-
+import MasterWalletSettings from "./pages/admin/MasterWalletSettings"
+import BalanceAdjust from "./pages/admin/BalanceAdjust"
 
 const App = () => {
   const { token } = useAppContext()
@@ -69,8 +70,12 @@ const App = () => {
             <Route path="transactions" element={<TransactionHistory />} />
             <Route path="rate" element={<RateManagement />} />
             <Route path="role" element={<RoleManagement />} />
+            <Route path="settings" element={<MasterWalletSettings />} />
+            <Route path="adjust-balance" element={<BalanceAdjust />} />
           </Route>
         </Route>
+
+
       </Routes >
     </>
   )

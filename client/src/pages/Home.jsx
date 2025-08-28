@@ -102,10 +102,9 @@ const Home = () => {
 
       {/* CONTAINERS */}
       <div className='mt-4 mx-4'>
+        <USDTPriceCards />
         <ContainerOne />
         <ContainerTwo />
-        <USDTPriceCards />
-        <ContainerThree />
         <ContainerThree />
         <div className='my-6 flex justify-center items-center'>
           <img src={twoMobiles} alt="" />

@@ -5,6 +5,7 @@ import { assets } from '../../assets/assets'
 const Sidebar = () => {
   return (
     <div className='flex flex-col border-r border-gray-200 min-h-full pt-6'>
+
       <NavLink
         end={true}
         to="/admin"
@@ -75,7 +76,32 @@ const Sidebar = () => {
         <img src={assets.role_management} alt="" className="min-w-4 w-5 text-black" />
         <p className="hidden md:inline-block">Role Management</p>
       </NavLink>
-    </div >
+
+      <NavLink
+        to="/admin/adjust-balance"
+        className={({ isActive }) =>
+          `flex items-center gap-3 py-3.5 px-3 md:px-9 md:min-w-64 cursor-pointer ${isActive && "bg-primary/10 border-r-4 border-primary"}`
+        }
+      >
+        {/* agar koi "money" / "adjust" icon ho to use kar lena; warna temporary comment_icon chal jayega */}
+        <img src={assets.comment_icon} alt="" className="min-w-4 w-5" />
+        <p className="hidden md:inline-block">Balance Adjust</p>
+      </NavLink>
+
+
+      {/* 🔥 New tab: Master Wallet Settings */}
+      <NavLink
+        to="/admin/settings"
+        className={({ isActive }) =>
+          `flex items-center gap-3 py-3.5 px-3 md:px-9 md:min-w-64 cursor-pointer ${isActive && "bg-primary/10 border-r-4 border-primary"}`
+        }
+      >
+        {/* agar assets me settings icon ho to use karein; warna temporary comment_icon use kar raha hun */}
+        <img src={assets.comment_icon} alt="" className="min-w-4 w-5" />
+        <p className="hidden md:inline-block">Master Wallet</p>
+      </NavLink>
+
+    </div>
   )
 }
 

@@ -18,6 +18,9 @@ import {
   placeOrder,
   getUserOrders,
   getOrderById,
+  getSettings,
+  updateSettings,
+  adminAdjustUserBalance,
 } from "../controllers/userController.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import authorizeRoles from "../middlewares/roleMiddleware.js";
@@ -29,6 +32,11 @@ import {
 } from "../controllers/adminController.js";
 
 const userRoutes = express.Router();
+
+userRoutes.get("/__ping", (req, res) => {
+  res.json({ ok: true, mount: "/api/v1/users", time: new Date().toISOString() });
+});
+
 
 // Only admin can access this router
 userRoutes.get("/admin", verifyToken, authorizeRoles("admin"), adminLogin);
@@ -98,6 +106,24 @@ userRoutes.patch(
         .json({ success: false, message: "Failed to update user role" });
     }
   }
+);
+userRoutes.get(
+  "/admin/settings",
+  verifyToken,
+  authorizeRoles("admin"),
+  getSettings
+);
+userRoutes.put(
+  "/admin/settings",
+  verifyToken,
+  authorizeRoles("admin"),
+  updateSettings
+);
+userRoutes.post(
+  "/admin/users/:id/adjust-balance",
+  verifyToken,
+  authorizeRoles("admin"),
+  adminAdjustUserBalance
 );
 
 // Both admin and manager can access this router

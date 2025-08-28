@@ -5,8 +5,15 @@ import Transaction from "../models/transactionModel.js";
 import { forwardUSDTToMaster } from "../utils/walletUtils.js";
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+const isManual = (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
+const FULL_HOST = process.env.TRON_FULL_HOST || "https://api.trongrid.io";
 
 export const startDepositCron = () => {
+  if (isManual) {
+    console.log("🛑 CRON disabled (DEPOSIT_MODE=manual). No auto deposit checks.");
+    return;
+  }
+
   cron.schedule("*/30 * * * * *", async () => {
     console.log("🔁 [CRON] Checking USDT deposits...");
 
@@ -17,35 +24,34 @@ export const startDepositCron = () => {
       if (!address || !privateKey) continue;
 
       try {
-       const { data } = await axios.get(
-  `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20`,
-  {
-    headers: {
-      "TRON-PRO-API-KEY": process.env.TRONGRID_API_KEY, // ✅ Required
-    },
-  }
-);
+        const { data } = await axios.get(
+          `${FULL_HOST}/v1/accounts/${address}/transactions/trc20`,
+          {
+            headers: process.env.TRONGRID_API_KEY
+              ? { "TRON-PRO-API-KEY": process.env.TRONGRID_API_KEY }
+              : {},
+          }
+        );
 
         const transactions = data?.data || [];
 
         const usdtDeposits = transactions.filter(
           (txn) =>
             txn.to === address &&
-            txn.token_info.symbol === "USDT" &&
-            txn.token_info.address === USDT_CONTRACT
+            txn.token_info?.symbol === "USDT" &&
+            txn.token_info?.address === USDT_CONTRACT
         );
 
         if (usdtDeposits.length === 0) continue;
 
         const latest = usdtDeposits[0];
 
-        // ❌ Skip if already logged
+        // Skip if already logged
         const exists = await Transaction.findOne({ txHash: latest.transaction_id });
         if (exists) continue;
 
         const amount = parseFloat(latest.value) / 1_000_000;
 
-        // Save the transaction
         const txn = await Transaction.create({
           userId: user._id,
           from: latest.from,
@@ -55,8 +61,14 @@ export const startDepositCron = () => {
           status: "pending",
         });
 
-        // Forward to master
-        const result = await forwardUSDTToMaster(address, privateKey, amount);
+        const result = await forwardUSDTToMaster(
+          address,
+          privateKey,
+          amount,
+          user._id,
+          latest.transaction_id,
+          user.email
+        );
 
         if (result.success) {
           await Transaction.findByIdAndUpdate(txn._id, {
@@ -65,13 +77,11 @@ export const startDepositCron = () => {
           });
           console.log(`✅ USDT forwarded | ${user.email} | Amount: ${amount}`);
         } else {
-          await Transaction.findByIdAndUpdate(txn._id, {
-            status: "failed",
-          });
-          console.log(`❌ Forward failed | ${user.email}`);
+          await Transaction.findByIdAndUpdate(txn._id, { status: "failed" });
+          console.log(`❌ Forward failed | ${user.email} | Reason: ${result.error || "unknown"}`);
         }
       } catch (err) {
-        console.error("🔴 Cron Error:", err.message);
+        console.error("🔴 Cron Error:", err?.message || err);
       }
     }
   });
