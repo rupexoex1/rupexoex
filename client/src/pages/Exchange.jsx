@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { toast } from 'react-hot-toast';
-import { useNavigate, NavLink } from 'react-router-dom';
-import { useAppContext } from '../../context/AppContext';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAppContext } from '../context/AppContext';
 
 const Exchange = () => {
   const { axios } = useAppContext();
@@ -25,7 +25,7 @@ const Exchange = () => {
     let mounted = true;
     (async () => {
       try {
-        // POST as per your route
+        // backend route: POST /api/v1/users/check-deposit
         const res = await axios.post('/api/v1/users/check-deposit');
         if (mounted && res.data?.success) {
           if (res.data.mode === 'manual') {
@@ -99,8 +99,9 @@ const Exchange = () => {
           <h1 className="text-xl font-semibold">Deposit USDT (TRC20)</h1>
           <div className="mt-2 flex items-center gap-2">
             <span
-              className={`text-[10px] px-2 py-1 rounded-full ${isManual ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'
-                }`}
+              className={`text-[10px] px-2 py-1 rounded-full ${
+                isManual ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'
+              }`}
             >
               {isManual ? 'Manual mode' : 'Auto mode'}
             </span>

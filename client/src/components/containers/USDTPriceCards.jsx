@@ -19,26 +19,16 @@ const USDTPriceCards = () => {
   };
 
   const handleSellClick = () => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-    if (!selectedPlan) {
-      toast.error('Select plan first');
-      return;
-    }
+    if (!token) return navigate('/login');
+    if (!selectedPlan) return toast.error('Select plan first');
     const selectedPrice = selectedPlan === 'Basic' ? basicPrice : vipPrice;
-    navigate('/sell', {
-      state: { plan: selectedPlan, price: selectedPrice },
-    });
+    navigate('/sell', { state: { plan: selectedPlan, price: selectedPrice } });
   };
 
   const handleDepositClick = () => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-    navigate('/deposit');
+    if (!token) return navigate('/login');
+    // ⬇️ yahan change — deposit page ki jagah /exchange
+    navigate('/exchange');
   };
 
   return (
