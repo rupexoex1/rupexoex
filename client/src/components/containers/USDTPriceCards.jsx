@@ -118,7 +118,7 @@ const USDTPriceCards = () => {
           </button> */}
 
           <button
-            onClick={handleDepositClick}
+            onClick={handleSellClick}
             className="flex flex-col items-center text-white hover:text-blue-400"
           >
             <div className="bg-[#1e293b] p-2 rounded-full">
