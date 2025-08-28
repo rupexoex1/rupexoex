@@ -109,15 +109,15 @@ const Profile = () => {
         {/* Balance Boxes */}
         <div className="grid grid-cols-3 gap-2 mt-6 text-center text-sm">
           <BalanceBox
-            label="Total (USDT)"
+            label="Total"
             value={loading ? "…" : total.toFixed(2)}
           />
           <BalanceBox
-            label="Available (USDT)"
+            label="Available"
             value={loading ? "…" : available.toFixed(2)}
           />
           <BalanceBox
-            label="Processing (USDT)"
+            label="Processing"
             value={loading ? "…" : Number(processingBalance).toFixed(2)}
           />
         </div>
