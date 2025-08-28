@@ -9,6 +9,7 @@ import {
   User,
   Hash,
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const formatINR = (n) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(
@@ -33,16 +34,18 @@ const StatusPill = ({ status = "pending" }) => {
   );
 };
 
-const CopyBtn = ({ value, label = "Copy" }) => {
+const CopyBtn = ({ value, label = "Copy", toastLabel }) => {
   if (!value) return null;
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
         navigator.clipboard.writeText(value);
+        toast.success(toastLabel || "Copied!");
       }}
       className="text-[11px] px-2 py-1 rounded-md border border-slate-600 hover:border-slate-400 text-slate-300"
       title={label}
+      type="button"
     >
       <div className="flex items-center gap-1">
         <Copy size={12} />
@@ -65,7 +68,7 @@ const OrderCard = ({ order = {} }) => {
       onKeyDown={(e) => e.key === "Enter" && navigate(`/order-tracking/${order._id}`)}
       className="bg-[#10192d] border border-slate-700 hover:border-slate-500 rounded-2xl p-4 md:p-5 text-white shadow-lg mb-4 transition relative group focus:outline-none focus:ring-2 focus:ring-slate-400/40"
     >
-      {/* Top row */}
+      {/* Top */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 text-slate-300">
           <Hash size={14} className="opacity-80" />
@@ -110,7 +113,7 @@ const OrderCard = ({ order = {} }) => {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-medium break-all">{acc.accountNumber || "N/A"}</span>
-            <CopyBtn value={acc.accountNumber} label="Copy" />
+            <CopyBtn value={acc.accountNumber} toastLabel="Account number copied" />
           </div>
         </div>
 
@@ -120,7 +123,7 @@ const OrderCard = ({ order = {} }) => {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-medium">{acc.ifsc || "N/A"}</span>
-            <CopyBtn value={acc.ifsc} label="Copy" />
+            <CopyBtn value={acc.ifsc} toastLabel="IFSC copied" />
           </div>
         </div>
 
