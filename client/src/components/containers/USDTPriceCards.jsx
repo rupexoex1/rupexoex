@@ -1,7 +1,8 @@
-import { useAppContext } from '../../context/AppContext';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import React from 'react';
 import PriceCard from './PriceCard';
+import { useAppContext } from '../../context/AppContext';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 const USDTPriceCards = () => {
   const {
@@ -9,7 +10,7 @@ const USDTPriceCards = () => {
     vipPrice,
     selectedPlan,
     setSelectedPlan,
-    token,
+    token, // ✅ Get token from context
   } = useAppContext();
 
   const navigate = useNavigate();
@@ -19,87 +20,120 @@ const USDTPriceCards = () => {
   };
 
   const handleSellClick = () => {
-    if (!token) return navigate('/login');
-
-    if (!selectedPlan) {
-      toast.error('Select plan first');
+    if (!token) {
+      navigate("/login");
       return;
     }
+
+    if (!selectedPlan) {
+      toast.error("Select Plan First");
+      return;
+    }
+
     const selectedPrice = selectedPlan === 'Basic' ? basicPrice : vipPrice;
 
     navigate('/sell', {
-      state: { plan: selectedPlan, price: selectedPrice },
+      state: {
+        plan: selectedPlan,
+        price: selectedPrice,
+      },
     });
   };
 
-  const handleDepositClick = () => {
-    if (!token) return navigate('/login');
-    // ⬇️ Deposit now routes to /exchange (your unified deposit page)
-    navigate('/exchange');
+  const handleDepositClick = (e) => {
+    e.preventDefault(); // prevent NavLink default
+    if (!token) {
+      navigate("/login");
+    } else {
+      navigate("/deposit");
+    }
   };
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="w-full max-w-md bg-[#0b1220] border border-[#1d2740] rounded-2xl p-4 md:p-6 shadow-xl">
-        {/* Header */}
-        <div className="mb-4 flex items-start justify-between">
-          <div>
-            <h3 className="text-white text-lg font-semibold">USDT Rates</h3>
-            <p className="text-xs text-gray-400">Choose your plan to proceed</p>
-          </div>
+    <div className="bg-secondary flex flex-col items-center justify-center rounded-xl px-4 py-4 mb-4">
 
-          {/* Tiny badge */}
-          <span className="text-[10px] px-2 py-1 rounded-full bg-blue-500/20 text-blue-300">
-            TRON • TRC20
-          </span>
-        </div>
+      <div className="w-full max-w-xs">
+        <PriceCard
+          type="Basic"
+          price={basicPrice}
+          range="100$ - 5000$"
+          bgColor="#156BF4"
+          isSelected={selectedPlan === 'Basic'}
+          onSelect={() => handleSelect('Basic')}
+        />
 
-        {/* Plan Cards */}
-        <div className="space-y-3">
-          <PriceCard
-            type="Basic"
-            price={basicPrice}
-            range="100$ – 5,000$"
-            bgColor="#156BF4"
-            isSelected={selectedPlan === 'Basic'}
-            onSelect={() => handleSelect('Basic')}
-          />
-          <PriceCard
-            type="VIP"
-            price={vipPrice}
-            range="≥ 5,000$"
-            bgColor="#F8C630"
-            isSelected={selectedPlan === 'VIP'}
-            onSelect={() => handleSelect('VIP')}
-          />
-        </div>
+        <PriceCard
+          type="VIP"
+          price={vipPrice}
+          range="+5000$"
+          bgColor="#F8C630"
+          isSelected={selectedPlan === 'VIP'}
+          onSelect={() => handleSelect('VIP')}
+        />
 
-        {/* Actions */}
-        <div className="mt-5 grid grid-cols-2 gap-2">
+        <div className='flex justify-center'>
           <button
             onClick={handleDepositClick}
-            className="w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+            className={`w-[50%] cursor-pointer text-white py-2 rounded font-semibold mt-2 transition-all duration-200 ${selectedPlan ? 'bg-[#30B0C7] cursor-pointer' : 'bg-red-800 cursor-not-allowed'
+              }`}
           >
             Deposit
           </button>
 
-          <button
-            onClick={handleSellClick}
-            disabled={!selectedPlan}
-            className={`w-full py-2 rounded-lg font-semibold transition-colors ${
-              selectedPlan
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            Sell USDT
-          </button>
         </div>
 
-        {/* Notes */}
-        <div className="mt-4 space-y-1 text-[11px] text-gray-400">
-          <p>• Rates are indicative and can change with the market.</p>
-          <p>• Selecting a plan applies the respective rate when selling.</p>
+        <div className="mt-4 gap-2 px-4 flex justify-center">
+          {/* <button
+            onClick={handleDepositClick}
+            className="flex flex-col items-center text-white hover:text-blue-400"
+          >
+            <div className="bg-[#1e293b] p-2 rounded-full">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span className="text-sm mt-1">Deposit</span>
+          </button> */}
+
+          {/* <button
+            onClick={handleDepositClick}
+            className={`w-[50%] text-white text-sm py-2 rounded font-semibold mt-2 transition-all duration-200 ${selectedPlan ? 'bg-[#30B0C7] cursor-pointer' : 'bg-red-800 cursor-not-allowed'
+              }`}
+          >
+            Deposit
+          </button> */}
+
+          {/* <button
+            onClick={handleSellClick}
+            className={`w-[50%] text-white text-sm py-2 rounded font-semibold mt-2 transition-all duration-200 ${selectedPlan ? 'bg-[#30B0C7] cursor-pointer' : 'bg-red-800  cursor-not-allowed'
+              }`}
+          >
+            Sell USDT
+          </button> */}
+
+          <button
+            onClick={handleSellClick}
+            className="flex flex-col items-center text-white hover:text-blue-400 cursor-pointer"
+          >
+            <div className="bg-[#1e293b] p-2 rounded-full">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span className="text-sm mt-1">Sell USDT</span>
+          </button>
         </div>
       </div>
     </div>
