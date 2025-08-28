@@ -1,13 +1,18 @@
+import mongoose from "mongoose";
 import Transaction from "../models/transactionModel.js";
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
-import mongoose from "mongoose";
 
+const isManual = (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
+
+/**
+ * GET /admin/transactions
+ */
 export const getAllTransactions = async (req, res) => {
   try {
     const transactions = await Transaction.find()
-      .populate("userId", "email") // show user email
+      .populate("userId", "email")
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -24,33 +29,27 @@ export const getAllTransactions = async (req, res) => {
   }
 };
 
+/**
+ * GET /admin/dashboard-stats
+ * Simple example: today new users + % change vs last month total (same as your previous)
+ */
 export const getAdminStats = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const startOfLastMonth = new Date(
-      today.getFullYear(),
-      today.getMonth() - 1,
-      1
-    );
+    const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    // Users Registered Today
-    const todayNewUsers = await User.countDocuments({
-      createdAt: { $gte: today },
-    });
+    // Users registered today
+    const todayNewUsers = await User.countDocuments({ createdAt: { $gte: today } });
 
-    // Users Registered Last Month
+    // Users registered last month (whole month)
     const lastMonthUsers = await User.countDocuments({
-      createdAt: {
-        $gte: startOfLastMonth,
-        $lte: endOfLastMonth,
-      },
+      createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
     });
 
-    // percentage change (simple)
     const userGrowthPercent = lastMonthUsers
       ? (((todayNewUsers - lastMonthUsers) / lastMonthUsers) * 100).toFixed(2)
       : 100;
@@ -69,32 +68,26 @@ export const getAdminStats = async (req, res) => {
   }
 };
 
+/**
+ * PUT /admin/orders/:id
+ * Only allow: pending -> confirmed/failed (one-time)
+ * On confirmed: deduct once (manual: credits-deduct; auto: forwarded-deduct)
+ */
 export const updateOrderStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: "Invalid order ID" });
+  }
+
   try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid order ID" });
-    }
-
-    if (!["pending", "confirmed", "failed"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Allowed: pending | confirmed | failed",
-      });
-    }
-
     const order = await Order.findById(id);
     if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // Lock: Only allow one status update (from pending)
+    // Lock: only from 'pending'
     if (order.status !== "pending") {
       return res.status(400).json({
         success: false,
@@ -102,27 +95,42 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    if (status === "confirmed") {
-      // Check balance before deduction
-      const transactions = await Transaction.find({
-        userId: order.user,
-        status: "forwarded",
+    if (!["confirmed", "failed"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Only 'confirmed' or 'failed' are allowed",
       });
+    }
 
-      const adjustments = await BalanceAdjustment.find({
-        userId: order.user,
-      });
+    // Has this order already been deducted? (shouldn't happen when pending, but safety)
+    const alreadyDeducted = await BalanceAdjustment.findOne({
+      orderId: order._id,
+      type: "deduct",
+    });
 
-      const totalForwarded = transactions.reduce(
-        (sum, tx) => sum + tx.amount,
-        0
-      );
-      const totalDebits = adjustments
-        .filter((a) => a.type === "deduct")
+    // Calculate available balance per mode
+    let availableBalance = 0;
+
+    if (isManual) {
+      const adjustments = await BalanceAdjustment.find({ userId: order.user });
+      const totalCredits = adjustments
+        .filter(a => a.type === "credit")
         .reduce((s, a) => s + a.amount, 0);
+      const totalDebits = adjustments
+        .filter(a => a.type === "deduct")
+        .reduce((s, a) => s + a.amount, 0);
+      availableBalance = totalCredits - totalDebits;
+    } else {
+      const [txs, debits] = await Promise.all([
+        Transaction.find({ userId: order.user, status: "forwarded" }),
+        BalanceAdjustment.find({ userId: order.user, type: "deduct" }),
+      ]);
+      const totalForwarded = txs.reduce((s, tx) => s + tx.amount, 0);
+      const totalDebits = debits.reduce((s, d) => s + d.amount, 0);
+      availableBalance = totalForwarded - totalDebits;
+    }
 
-      const availableBalance = totalForwarded - totalDebits;
-
+    if (status === "confirmed") {
       if (order.amount > availableBalance) {
         return res.status(400).json({
           success: false,
@@ -130,24 +138,18 @@ export const updateOrderStatus = async (req, res) => {
         });
       }
 
-      // Deduct only once
-      const alreadyDeducted = await BalanceAdjustment.findOne({
-        orderId: order._id,
-        type: "deduct",
-      });
       if (!alreadyDeducted) {
-        await BalanceAdjustment.create({
+        await new BalanceAdjustment({
           userId: order.user,
           amount: order.amount,
           type: "deduct",
           reason: "Admin confirmed order",
           orderId: order._id,
-          createdBy: req.user._id,
-        });
+        }).save();
       }
     }
 
-    // finalize
+    // If failed: no deduction
     order.status = status;
     order.completedAt = new Date();
     await order.save();
@@ -159,22 +161,22 @@ export const updateOrderStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("Order status update error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error updating order status" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+/**
+ * GET /admin/orders
+ */
 export const getAllOrders = async (req, res) => {
   try {
-    // bankAccount is embedded object in your UI usage; no populate needed
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find()
+      .sort({ createdAt: -1 })
+      .populate("bankAccount"); // only if bankAccount is a ref
 
     res.status(200).json({ success: true, orders });
   } catch (err) {
     console.error("Error fetching orders:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch orders" });
+    res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
 };
