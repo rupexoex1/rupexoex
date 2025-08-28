@@ -74,7 +74,7 @@ const USDTPriceCards = () => {
         <div className='flex justify-center'>
           <button
             onClick={handleDepositClick}
-            className={`w-[50%] text-white py-2 rounded font-semibold mt-2 transition-all duration-200 ${selectedPlan ? 'bg-[#30B0C7] cursor-pointer' : 'bg-red-800 cursor-not-allowed'
+            className={`w-[50%] cursor-pointer text-white py-2 rounded font-semibold mt-2 transition-all duration-200 ${selectedPlan ? 'bg-[#30B0C7] cursor-pointer' : 'bg-red-800 cursor-not-allowed'
               }`}
           >
             Deposit
@@ -119,7 +119,7 @@ const USDTPriceCards = () => {
 
           <button
             onClick={handleSellClick}
-            className="flex flex-col items-center text-white hover:text-blue-400"
+            className="flex flex-col items-center text-white hover:text-blue-400 cursor-pointer"
           >
             <div className="bg-[#1e293b] p-2 rounded-full">
               <svg

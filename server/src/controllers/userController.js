@@ -29,6 +29,7 @@ export const publicInfo = (req, res) => {
 };
 
 export const checkUSDTDeposit = async (req, res) => {
+  // Manual mode → return master wallet to show on frontend
   if (isManual) {
     const setting = (await Setting.findOne()) || (await Setting.create({}));
     return res.status(200).json({
@@ -78,6 +79,19 @@ export const checkUSDTDeposit = async (req, res) => {
     }
 
     const latest = usdtDeposits[0];
+
+    // guard: skip if already processed
+    const already = await Transaction.findOne({
+      txHash: latest.transaction_id,
+    });
+    if (already) {
+      return res.status(200).json({
+        success: true,
+        message: "Deposit already processed",
+        txHash: latest.transaction_id,
+      });
+    }
+
     const amount = parseFloat(latest.value) / 1_000_000;
 
     const savedTxn = await Transaction.create({
@@ -89,7 +103,7 @@ export const checkUSDTDeposit = async (req, res) => {
       status: "pending",
     });
 
-    // ⬇️ pass userId + originalTxHash + email (walletUtils will update TX internally)
+    // pass userId + originalTxHash + email (walletUtils will update TX internally)
     const forwardTx = await forwardUSDTToMaster(
       walletAddress,
       user.tronWallet.privateKey,
@@ -159,8 +173,8 @@ export const getVirtualBalance = async (req, res) => {
         .json({ success: false, message: "Invalid user ID" });
     }
 
-    // Manual mode: balance = sum of all adjustments (credit - debit)
-    // Auto mode: (as-is) forwarded sum - deducted
+    // Manual mode: balance = credits - deducts
+    // Auto mode: balance = forwarded - deducts (as-is)
     const adjustments = await BalanceAdjustment.find({ userId });
 
     const totalCredits = adjustments
@@ -173,7 +187,6 @@ export const getVirtualBalance = async (req, res) => {
     let availableBalance = totalCredits - totalDebits;
 
     if (!isManual) {
-      // keep old behavior for auto mode
       const transactions = await Transaction.find({
         userId: new mongoose.Types.ObjectId(userId),
         status: "forwarded",
@@ -182,7 +195,7 @@ export const getVirtualBalance = async (req, res) => {
         (sum, tx) => sum + tx.amount,
         0
       );
-      availableBalance = totalForwarded - totalDebits; // existing logic
+      availableBalance = totalForwarded - totalDebits;
     }
 
     res.status(200).json({ success: true, balance: availableBalance });
@@ -288,6 +301,7 @@ export const placeOrder = async (req, res) => {
       });
     }
 
+    // Create as pending; no deduction here
     const order = await Order.create({
       user: userId,
       amount,
@@ -295,28 +309,21 @@ export const placeOrder = async (req, res) => {
       bankAccount,
       plan,
       price,
-      status: "confirmed",
-      completedAt: new Date(),
+      status: "pending",
+      completedAt: null,
     });
-
-    await new BalanceAdjustment({
-      userId,
-      amount,
-      type: "deduct",
-      reason: "Order placed",
-      orderId: order._id,
-    }).save();
 
     return res.status(201).json({
       success: true,
-      message: "Order placed and balance deducted",
+      message: "Order placed. Awaiting admin confirmation.",
       order,
     });
   } catch (err) {
     console.error("❌ Order placement error:", err);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error during order placement" });
+    res.status(500).json({
+      success: false,
+      message: "Server error during order placement",
+    });
   }
 };
 
@@ -393,12 +400,10 @@ export const adminAdjustUserBalance = async (req, res) => {
     const { amount, type, reason } = req.body;
 
     if (!amount || !type || !["credit", "deduct"].includes(type)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "amount and valid type (credit|deduct) required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "amount and valid type (credit|deduct) required",
+      });
     }
 
     const user = await User.findById(id);

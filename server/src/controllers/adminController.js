@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 export const getAllTransactions = async (req, res) => {
   try {
     const transactions = await Transaction.find()
-      .populate("userId", "email") // to show user email in frontend
+      .populate("userId", "email") // show user email
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -37,12 +37,12 @@ export const getAdminStats = async (req, res) => {
     );
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    // ✅ Users Registered Today
+    // Users Registered Today
     const todayNewUsers = await User.countDocuments({
       createdAt: { $gte: today },
     });
 
-    // ✅ Users Registered Last Month
+    // Users Registered Last Month
     const lastMonthUsers = await User.countDocuments({
       createdAt: {
         $gte: startOfLastMonth,
@@ -50,7 +50,7 @@ export const getAdminStats = async (req, res) => {
       },
     });
 
-    // ✅ Calculate percentage change
+    // percentage change (simple)
     const userGrowthPercent = lastMonthUsers
       ? (((todayNewUsers - lastMonthUsers) / lastMonthUsers) * 100).toFixed(2)
       : 100;
@@ -70,16 +70,23 @@ export const getAdminStats = async (req, res) => {
 };
 
 export const updateOrderStatus = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid order ID" });
-  }
-
   try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid order ID" });
+    }
+
+    if (!["pending", "confirmed", "failed"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Allowed: pending | confirmed | failed",
+      });
+    }
+
     const order = await Order.findById(id);
     if (!order) {
       return res
@@ -87,7 +94,7 @@ export const updateOrderStatus = async (req, res) => {
         .json({ success: false, message: "Order not found" });
     }
 
-    // ✅ Lock: Only allow one status update (from pending)
+    // Lock: Only allow one status update (from pending)
     if (order.status !== "pending") {
       return res.status(400).json({
         success: false,
@@ -95,64 +102,52 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    if (status !== "confirmed" && status !== "failed") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Only 'confirmed' or 'failed' are allowed",
-      });
-    }
-
-    const alreadyDeducted = await BalanceAdjustment.findOne({
-      orderId: order._id,
-      type: "deduct",
-    });
-
-    // ✅ Confirming the order
     if (status === "confirmed") {
+      // Check balance before deduction
+      const transactions = await Transaction.find({
+        userId: order.user,
+        status: "forwarded",
+      });
+
+      const adjustments = await BalanceAdjustment.find({
+        userId: order.user,
+      });
+
+      const totalForwarded = transactions.reduce(
+        (sum, tx) => sum + tx.amount,
+        0
+      );
+      const totalDebits = adjustments
+        .filter((a) => a.type === "deduct")
+        .reduce((s, a) => s + a.amount, 0);
+
+      const availableBalance = totalForwarded - totalDebits;
+
+      if (order.amount > availableBalance) {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient balance to confirm this order",
+        });
+      }
+
+      // Deduct only once
+      const alreadyDeducted = await BalanceAdjustment.findOne({
+        orderId: order._id,
+        type: "deduct",
+      });
       if (!alreadyDeducted) {
-        // Check balance before deduction
-        const transactions = await Transaction.find({
-          userId: order.user,
-          status: "forwarded",
-        });
-
-        const adjustments = await BalanceAdjustment.find({
-          userId: order.user,
-        });
-
-        const totalForwarded = transactions.reduce(
-          (sum, tx) => sum + tx.amount,
-          0
-        );
-        const totalDeducted = adjustments.reduce(
-          (sum, adj) => sum + adj.amount,
-          0
-        );
-        const availableBalance = totalForwarded - totalDeducted;
-
-        // ❌ Block if balance is insufficient (prevents going below 0)
-        if (order.amount > availableBalance) {
-          return res.status(400).json({
-            success: false,
-            message: "Insufficient balance to confirm this order",
-          });
-        }
-
-        // ✅ Deduct only once
-        await new BalanceAdjustment({
+        await BalanceAdjustment.create({
           userId: order.user,
           amount: order.amount,
           type: "deduct",
           reason: "Admin confirmed order",
           orderId: order._id,
-        }).save();
+          createdBy: req.user._id,
+        });
       }
     }
 
-    // ✅ If failed — no deduction, no refund
-    // (Only one update allowed, so refund scenario doesn’t apply)
-
-    // ✅ Mark status + timestamp
+    // finalize
     order.status = status;
     order.completedAt = new Date();
     await order.save();
@@ -164,19 +159,22 @@ export const updateOrderStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("Order status update error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error updating order status" });
   }
 };
 
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .sort({ createdAt: -1 })
-      .populate("bankAccount"); // If you're using ref in bankAccount
+    // bankAccount is embedded object in your UI usage; no populate needed
+    const orders = await Order.find().sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, orders });
   } catch (err) {
     console.error("Error fetching orders:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch orders" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch orders" });
   }
 };
