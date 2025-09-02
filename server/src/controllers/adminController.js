@@ -178,13 +178,11 @@ export const updateOrderStatus = async (req, res) => {
 
 /**
  * GET /admin/orders
+ * (EMBEDDED bankAccount — no populate)
  */
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .sort({ createdAt: -1 })
-      .populate("bankAccount", "holderName accountNumber ifsc");
-
+    const orders = await Order.find().sort({ createdAt: -1 }); // 👈 populate removed
     res.status(200).json({ success: true, orders });
   } catch (err) {
     console.error("Error fetching orders:", err);

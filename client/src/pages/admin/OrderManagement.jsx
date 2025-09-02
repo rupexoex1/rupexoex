@@ -113,7 +113,7 @@ const OrderManagement = () => {
     try {
       setUpdatingId(orderId);
       const res = await axios.put(`/api/v1/users/admin/orders/${orderId}`, { status: newStatus });
-    if (res.data.success) {
+      if (res.data.success) {
         toast.success(`Order ${newStatus}`);
         await fetchOrders();
       } else {
@@ -143,7 +143,7 @@ const OrderManagement = () => {
 
     return orders.filter((o) => {
       const last6 = o?._id?.slice(-6) || "";
-      const ba = o.bankAccount || o.bankAccountSnapshot || {};
+      const ba = o.bankAccount || {}; // embedded object
       return (
         match(o?._id) ||
         match(last6) ||
@@ -152,7 +152,7 @@ const OrderManagement = () => {
         match(o?.price) ||
         match(o?.amount) ||
         match(o?.inrAmount) ||
-        match(ba?.holderName) ||
+        match(ba?.accountHolder) ||   // 👈 accountHolder
         match(ba?.accountNumber) ||
         match(ba?.ifsc) ||
         match(o?.createdAt && new Date(o.createdAt).toLocaleString()) ||
@@ -223,9 +223,9 @@ const OrderManagement = () => {
                 const isPending = order.status === "pending";
                 const disabled = !isPending || updatingId === order._id;
 
-                // pick populated object or snapshot
-                const ba = order.bankAccount || order.bankAccountSnapshot || {};
-                const name = ba.holderName ?? "N/A";
+                // embedded object only
+                const ba = order.bankAccount || {};
+                const name = ba.accountHolder ?? "N/A";  // 👈 accountHolder
                 const ac   = ba.accountNumber ?? "N/A";
                 const ifsc = ba.ifsc ?? "N/A";
 
