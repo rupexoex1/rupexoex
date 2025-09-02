@@ -11,7 +11,12 @@ const Orders = () => {
       try {
         const res = await axios.get("/api/v1/users/orders");
         if (res.data.success) {
-          setOrders(res.data.orders.reverse());
+          setOrders(
+            [...res.data.orders].sort(
+              (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+            )
+          );
+
         }
       } catch (err) {
         console.error("Failed to fetch orders", err);

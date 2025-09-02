@@ -73,11 +73,15 @@ const Home = () => {
               {
                 nameWithRole == "Guest" ?
                   <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                  Welcome to Rupexo
+                    Welcome to Rupexo
                   </h2> :
                   <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                    {userBalance?.toFixed(2)} $
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    }).format(userBalance ?? 0)}
                   </h2>
+
               }
               <p className="rich-text text-xs mb-1">{nameWithRole}</p>
             </div>
