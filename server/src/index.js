@@ -1,36 +1,47 @@
+import express from "express";
+import "dotenv/config";
 import cors from "cors";
+import dbConnect from "./config/dbConnect.js";
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import ratesRoutes from "./routes/ratesRoutes.js";
+import { startDepositCron } from "./cronJobs/depositChecker.js";
 
+dbConnect();
+const app = express();
+
+// All frontend from port 5173
 const allowedOrigins = [
   "http://localhost:5173",
   "https://rupexo.vercel.app",
+  "https://rupexoex-dev.salite.site",
   "https://rupexo.salite.site",
   "https://www.rupexo.salite.site",
 ];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
-// single source of truth
-const corsOptions = {
-  origin(origin, cb) {
-    if (!origin) return cb(null, true); // server-to-server / health checks
-    return allowedOrigins.includes(origin)
-      ? cb(null, true)
-      : cb(new Error("Not allowed by CORS: " + origin));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  exposedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 204,
-};
+// Middlewares
+app.use(express.json());
+startDepositCron();
 
-// ⭐ must be before any routes
-app.use(cors(corsOptions));
-// ⭐ answer every preflight
-app.options("*", cors(corsOptions));
+// Routes
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use(ratesRoutes);
 
-// (optional) debug: dekhne ko ke OPTIONS aa rahi hai
-app.use((req, _res, next) => {
-  if (req.method === "OPTIONS") {
-    console.log("Preflight from:", req.headers.origin, "→", req.originalUrl);
-  }
-  next();
+// Start the server
+const PORT = process.env.PORT || 7002;
+app.listen(PORT, () => {
+  console.log(`Server is running at port: ${PORT}`);
 });
