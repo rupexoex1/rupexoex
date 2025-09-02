@@ -78,26 +78,6 @@ const USDTPriceCards = () => {
             Deposit
           </button>
         </div>
-
-        <div className="mt-4 gap-2 px-4 flex justify-center">
-          <button
-            onClick={handleSellClick}
-            className="flex flex-col items-center text-white hover:text-blue-400 cursor-pointer"
-          >
-            <div className="bg-[#1e293b] p-2 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </div>
-            <span className="text-sm mt-1">Sell USDT</span>
-          </button>
-        </div>
       </div>
     </div>
   );
