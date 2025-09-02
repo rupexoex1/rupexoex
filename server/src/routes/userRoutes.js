@@ -34,9 +34,12 @@ import {
 const userRoutes = express.Router();
 
 userRoutes.get("/__ping", (req, res) => {
-  res.json({ ok: true, mount: "/api/v1/users", time: new Date().toISOString() });
+  res.json({
+    ok: true,
+    mount: "/api/v1/users",
+    time: new Date().toISOString(),
+  });
 });
-
 
 // Only admin can access this router
 userRoutes.get("/admin", verifyToken, authorizeRoles("admin"), adminLogin);
@@ -150,7 +153,12 @@ userRoutes.put(
         await Rate.create({ basic, vip });
       }
 
-      res.json({ success: true, message: "Rates updated successfully" });
+      res.json({
+        success: true,
+        message: "Rates updated successfully",
+        basic: rate.basic,
+        vip: rate.vip,
+      });
     } catch (err) {
       res
         .status(500)
@@ -194,13 +202,13 @@ userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
 userRoutes.post("/orders", verifyToken, placeOrder);
 userRoutes.get("/orders", verifyToken, getUserOrders);
 userRoutes.get("/orders/:id", verifyToken, getOrderById);
-userRoutes.get("/rates", verifyToken, async (req, res) => {
+userRoutes.get("/rates", async (req, res) => {
   try {
     let rate = await Rate.findOne();
     if (!rate) {
       rate = await Rate.create({ basic: "91.50", vip: "94.00" });
     }
-    res.json(rate);
+    res.json({ success: true, basic: rate.basic, vip: rate.vip });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to fetch rates" });
   }

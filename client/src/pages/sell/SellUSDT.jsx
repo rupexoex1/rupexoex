@@ -1,85 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { useAppContext } from '../../context/AppContext';
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import { useAppContext } from "../../context/AppContext";
 
 const SellUSDT = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { plan, selectedAccount } = location.state || {};
-  const { userBalance, axios, selectedPlan, selectedBank } = useAppContext();
+  const location = useLocation();
 
-  const [price, setPrice] = useState(null); // ✅ dynamic rate
+  // plan can come from router state or context fallback
+  const planFromState = location.state?.plan;
+  const {
+    axios,
+    userBalance,
+    selectedPlan,
+    selectedBank,
+    // dynamic rates
+    basicPrice,
+    vipPrice,
+    // dynamic limits
+    basicMin,
+    basicMax,
+    vipMin,
+  } = useAppContext();
+
+  // final plan to use
+  const plan = planFromState || selectedPlan;
+
+  // derive price from context (kept in state for display/use)
+  const [price, setPrice] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [error, setError] = useState('');
-  const [inrAmount, setInrAmount] = useState(0);
 
-  // ✅ Redirect if plan is not selected
+  // when plan or context prices change, recompute local price
   useEffect(() => {
-    if (!plan) {
-      navigate('/');
-      return;
-    }
+    if (!plan) return;
+    const p = plan === "Basic" ? Number(basicPrice) : Number(vipPrice);
+    setPrice(Number.isFinite(p) ? p : null);
+  }, [plan, basicPrice, vipPrice]);
 
-    const fetchRate = async () => {
-      try {
-        const res = await axios.get("/api/v1/users/rates");
-        if (res.data) {
-          if (plan === "Basic") {
-            setPrice(parseFloat(res.data.basic));
-          } else if (plan === "VIP") {
-            setPrice(parseFloat(res.data.vip));
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching rates:", err.message);
-        toast.error("Failed to load rate");
-      }
-    };
-
-    fetchRate();
+  // guard: if plan missing, go back home
+  useEffect(() => {
+    if (!plan) navigate("/");
   }, [plan, navigate]);
+
+  // memoized INR amount
+  const inrAmount = useMemo(() => {
+    const num = parseFloat(amount);
+    if (!price || !Number.isFinite(num)) return 0;
+    return num * price;
+  }, [amount, price]);
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
     setAmount(value);
 
     const num = parseFloat(value);
-    if (!value || isNaN(num)) {
-      setError('Enter a valid number');
-      setInrAmount(0);
+
+    // reset error early
+    setError("");
+
+    if (!value || !Number.isFinite(num)) {
+      setError("Enter a valid number");
       return;
     }
 
-    if (plan === 'Basic' && (num < 100 || num > 5000)) {
-      setError('Basic plan allows 100 to 5000 USDT only');
-      setInrAmount(0);
-      return;
+    // dynamic validation via limits from context
+    if (plan === "Basic") {
+      if (num < Number(basicMin) || num > Number(basicMax)) {
+        setError(`Basic plan allows ${basicMin} to ${basicMax} USDT only`);
+        return;
+      }
+    } else if (plan === "VIP") {
+      if (num <= Number(vipMin) - 1) {
+        setError(`VIP plan allows more than ${Number(vipMin) - 1} USDT`);
+        return;
+      }
     }
 
-    if (plan === 'VIP' && num <= 5000) {
-      setError('VIP plan allows more than 5000 USDT');
-      setInrAmount(0);
+    if (num > Number(userBalance)) {
+      setError("You cannot sell more than your available balance");
       return;
     }
-
-    if (num > userBalance) {
-      setError('You cannot sell more than your available balance');
-      setInrAmount(0);
-      return;
-    }
-
-    if (!price) return; // guard
-    setError('');
-    setInrAmount(num * price);
   };
 
   const handleConfirm = async () => {
-    if (!amount || error || !selectedBank || !price) {
-      toast.error("Fix errors or select payee before confirming");
-      return;
-    }
+    if (!plan) return toast.error("Plan not selected");
+    if (!selectedBank) return toast.error("Please select a payee");
+    if (!amount || !price || error) return toast.error("Fix the form errors first");
 
     setLoading(true);
     try {
@@ -91,19 +99,19 @@ const SellUSDT = () => {
         bankAccount: {
           accountNumber: selectedBank.accountNumber,
           ifsc: selectedBank.ifsc,
-          accountHolder: selectedBank.holderName
-        }
+          accountHolder: selectedBank.holderName,
+        },
       });
 
-      if (res.data.success) {
+      if (res.data?.success) {
         toast.success("Order placed successfully");
         navigate(`/order-tracking/${res.data.order._id}`);
       } else {
-        toast.error(res.data.message || "Failed to place order");
+        toast.error(res.data?.message || "Failed to place order");
       }
     } catch (err) {
       console.error(err);
-      toast.error("Server error");
+      toast.error(err?.response?.data?.message || "Server error");
     } finally {
       setLoading(false);
     }
@@ -113,17 +121,29 @@ const SellUSDT = () => {
     <div className="min-h-screen bg-[#0f172a] text-white px-4 py-6 flex flex-col items-center">
       <h1 className="text-xl font-bold mb-4">Exchange</h1>
 
+      {/* Select Payee */}
       <button
-        onClick={() => navigate('/select-payee')}
+        onClick={() => navigate("/select-payee")}
         className="w-full max-w-md mb-5 flex items-center justify-center gap-2 text-white border border-[#3b82f6] rounded-full py-2 px-4 hover:bg-[#1e293b] transition duration-200 cursor-pointer"
       >
         <span>Select Payee</span>
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A9.953 9.953 0 0112 15c2.21 0 4.253.713 5.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5.121 17.804A9.953 9.953 0 0112 15c2.21 0 4.253.713 5.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+          />
         </svg>
       </button>
 
-      {/* Account Info */}
+      {/* Payee details */}
       {selectedBank ? (
         <div className="bg-[#1e293b] w-full max-w-md rounded-lg p-4 mb-4 space-y-2 text-sm">
           <div className="flex justify-between">
@@ -143,7 +163,7 @@ const SellUSDT = () => {
         <div className="text-sm text-red-400 mb-3">No payee selected</div>
       )}
 
-      {/* Amount Input */}
+      {/* Amount + Rate */}
       <div className="bg-[#1e293b] w-full max-w-md rounded-lg p-4 space-y-3 text-sm mb-4">
         <div className="flex items-center border border-gray-600 rounded px-2 py-2">
           <input
@@ -152,6 +172,7 @@ const SellUSDT = () => {
             onChange={handleAmountChange}
             className="bg-transparent outline-none w-full text-white"
             placeholder="Enter USDT Amount"
+            min="0"
           />
           <span className="text-blue-400 text-xs ml-2">USDT</span>
         </div>
@@ -161,8 +182,12 @@ const SellUSDT = () => {
         <div className="flex justify-between items-center text-sm mt-1">
           <span>
             Available:{" "}
-            <span className={`${userBalance < 100 ? 'text-red-400' : 'text-green-400'}`}>
-              {userBalance?.toFixed(2)} USDT
+            <span
+              className={`${
+                Number(userBalance) < Number(basicMin) ? "text-red-400" : "text-green-400"
+              }`}
+            >
+              {Number(userBalance).toFixed(2)} USDT
             </span>
           </span>
           {price && (
@@ -172,27 +197,32 @@ const SellUSDT = () => {
           )}
         </div>
 
-        {userBalance < 100 && (
-          <div className="text-red-400 text-xs mt-1">
-            You cannot sell below 100 USDT
-          </div>
-        )}
+        {/* Dynamic limits hint */}
+        <div className="text-xs text-slate-400">
+          {plan === "Basic"
+            ? `Allowed: ${basicMin}–${basicMax} USDT`
+            : `Allowed: > ${Number(vipMin) - 1} USDT`}
+        </div>
 
         <div className="text-md font-semibold mt-1">
-          You will receive: <span className="text-green-400">{inrAmount || 0} ₹</span>
+          You will receive:{" "}
+          <span className="text-green-400">
+            {inrAmount ? `${inrAmount.toFixed(2)} ₹` : "0 ₹"}
+          </span>
         </div>
       </div>
 
-      {/* Confirm Button */}
+      {/* Confirm */}
       <button
         onClick={handleConfirm}
-        disabled={!!error || !amount || !price}
-        className={`w-full max-w-md py-3 rounded font-semibold text-white ${!!error || !amount || !price
-          ? 'bg-gray-600 cursor-not-allowed'
-          : 'bg-blue-600 hover:bg-blue-700'
-          }`}
+        disabled={!!error || !amount || !price || !selectedBank}
+        className={`w-full max-w-md py-3 rounded font-semibold text-white ${
+          !!error || !amount || !price || !selectedBank
+            ? "bg-gray-600 cursor-not-allowed"
+            : "bg-blue-600 hover:bg-blue-700"
+        }`}
       >
-        {loading ? 'Placing Order...' : 'Confirm'}
+        {loading ? "Placing Order..." : "Confirm"}
       </button>
     </div>
   );

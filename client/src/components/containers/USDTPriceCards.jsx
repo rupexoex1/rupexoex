@@ -8,6 +8,9 @@ const USDTPriceCards = () => {
   const {
     basicPrice,
     vipPrice,
+    basicMin,
+    basicMax,
+    vipMin,
     selectedPlan,
     setSelectedPlan,
     token,
@@ -22,23 +25,13 @@ const USDTPriceCards = () => {
 
     if (!token) {
       navigatingRef.current = true;
-      // optional: remember where to return after login
       navigate("/login", { state: { redirectTo: "/sell", plan } });
       return;
     }
 
     setSelectedPlan(plan);
     navigatingRef.current = true;
-    navigate("/sell", {
-      state: { plan, price: selectedPrice },
-    });
-  };
-
-  const handleSellClick = () => {
-    if (!token) return navigate("/login");
-    if (!selectedPlan) return toast.error("Select Plan First");
-    const selectedPrice = selectedPlan === "Basic" ? basicPrice : vipPrice;
-    navigate("/sell", { state: { plan: selectedPlan, price: selectedPrice } });
+    navigate("/sell", { state: { plan, price: selectedPrice } });
   };
 
   const handleDepositClick = (e) => {
@@ -47,13 +40,17 @@ const USDTPriceCards = () => {
     else navigate("/deposit");
   };
 
+  // dynamic ranges from context
+  const basicRange = `${basicMin}$ - ${basicMax}$`;
+  const vipRange = `>${vipMin - 1}$`; // e.g., >5000$
+
   return (
     <div className="bg-secondary flex flex-col items-center justify-center rounded-xl px-4 py-4 mb-4">
       <div className="w-full max-w-xs">
         <PriceCard
           type="Basic"
           price={basicPrice}
-          range="100$ - 5000$"
+          range={basicRange}
           bgColor="#156BF4"
           isSelected={selectedPlan === "Basic"}
           onSelect={() => handleSelect("Basic")}
@@ -62,7 +59,7 @@ const USDTPriceCards = () => {
         <PriceCard
           type="VIP"
           price={vipPrice}
-          range="+5000$"
+          range={vipRange}
           bgColor="#F8C630"
           isSelected={selectedPlan === "VIP"}
           onSelect={() => handleSelect("VIP")}

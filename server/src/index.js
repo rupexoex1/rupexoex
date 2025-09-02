@@ -4,6 +4,7 @@ import cors from "cors";
 import dbConnect from "./config/dbConnect.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import ratesRoutes from "./routes/ratesRoutes.js";
 import { startDepositCron } from "./cronJobs/depositChecker.js";
 
 dbConnect();
@@ -37,6 +38,7 @@ startDepositCron();
 // Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use(ratesRoutes);
 
 // Start the server
 const PORT = process.env.PORT || 7002;

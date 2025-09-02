@@ -1,31 +1,35 @@
-import Rate from '../models/rateModel.js';
+// controllers/ratesController.js
+import Setting from "../models/settingModel.js";
 
-export const getRates = async (req, res) => {
+export const getPublicRates = async (req, res) => {
   try {
-    let rate = await Rate.findOne();
-    if (!rate) {
-      rate = await Rate.create({ basic: '91.50', vip: '94.00' });
-    }
-    res.json(rate);
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to fetch rates' });
+    const doc = await Setting.getRates();
+    return res.json({
+      basic: doc.data.basic,
+      vip: doc.data.vip,
+    });
+  } catch (e) {
+    console.error("getPublicRates error:", e);
+    return res.status(500).json({ message: "Failed to get rates" });
   }
 };
 
+// NOTE: Secure this with your admin auth middleware
 export const updateRates = async (req, res) => {
   try {
     const { basic, vip } = req.body;
-    let rate = await Rate.findOne();
-    if (rate) {
-      rate.basic = basic;
-      rate.vip = vip;
-      await rate.save();
-    } else {
-      await Rate.create({ basic, vip });
+    if (!basic || !vip) {
+      return res.status(400).json({ success: false, message: "Both basic and vip are required" });
     }
 
-    res.json({ success: true, message: 'Rates updated successfully' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Failed to update rates' });
+    const doc = await Setting.getRates();
+    doc.data.basic = String(basic);
+    doc.data.vip = String(vip);
+    await doc.save();
+
+    return res.json({ success: true, message: "Rates updated", basic: doc.data.basic, vip: doc.data.vip });
+  } catch (e) {
+    console.error("updateRates error:", e);
+    return res.status(500).json({ success: false, message: "Failed to update rates" });
   }
 };

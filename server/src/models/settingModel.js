@@ -1,16 +1,22 @@
+// models/settingModel.js
 import mongoose from "mongoose";
 
 const settingSchema = new mongoose.Schema(
   {
-    masterWalletAddress: {
-      type: String,
-      required: true,
-      default: process.env.MASTER_WALLET_ADDRESS || "",
+    key: { type: String, unique: true, required: true }, // e.g. "RATES"
+    data: {
+      basic: { type: String, default: "91.50" }, // string rakhe to precision issues avoid hon
+      vip: { type: String, default: "94.00" },
     },
-    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   },
   { timestamps: true }
 );
 
-const Setting = mongoose.models.Setting || mongoose.model("Setting", settingSchema);
-export default Setting;
+// single doc access helper
+settingSchema.statics.getRates = async function () {
+  let doc = await this.findOne({ key: "RATES" });
+  if (!doc) doc = await this.create({ key: "RATES" });
+  return doc;
+};
+
+export default mongoose.model("Setting", settingSchema);

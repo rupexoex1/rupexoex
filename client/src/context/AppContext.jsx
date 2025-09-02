@@ -23,12 +23,20 @@ export const AppProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // rates
   const [basicPrice, setBasicPrice] = useState("91.50");
   const [vipPrice, setVipPrice] = useState("94.00");
+
+  // plan limits (NEW: dynamic)
+  const [basicMin, setBasicMin] = useState(100);
+  const [basicMax, setBasicMax] = useState(5000);
+  const [vipMin, setVipMin] = useState(5001);
+
+  // balances / selections
   const [userBalance, setUserBalance] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [selectedBank, setSelectedBank] = useState(null);
-
 
   const fetchUserBalance = async () => {
     try {
@@ -45,8 +53,14 @@ export const AppProvider = ({ children }) => {
     try {
       const res = await axios.get("/api/v1/users/rates");
       if (res.data) {
+        // rates
         setBasicPrice(res.data.basic);
         setVipPrice(res.data.vip);
+
+        // limits (with safe defaults)
+        setBasicMin(Number(res.data.basicMin ?? 100));
+        setBasicMax(Number(res.data.basicMax ?? 5000));
+        setVipMin(Number(res.data.vipMin ?? 5001));
       }
     } catch (error) {
       console.error("Error fetching rates:", error.message);
@@ -60,9 +74,7 @@ export const AppProvider = ({ children }) => {
       setToken(storedToken)
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
       const decoded = decodeJWT(storedToken);
-      if (decoded?.role) {
-        setRole(decoded.role);
-      }
+      if (decoded?.role) setRole(decoded.role);
     }
     if (storedUser) {
       const parsed = JSON.parse(storedUser);
@@ -74,7 +86,15 @@ export const AppProvider = ({ children }) => {
   }, [])
 
   const value = {
-    navigate, axios, token, setToken, role, setRole, loading, basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend, userBalance, fetchUserBalance, selectedPlan, setSelectedPlan, selectedBank, setSelectedBank
+    navigate, axios, token, setToken, role, setRole, loading,
+    // rates
+    basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend,
+    // limits
+    basicMin, basicMax, vipMin, setBasicMin, setBasicMax, setVipMin,
+    // balances
+    userBalance, fetchUserBalance,
+    // selections
+    selectedPlan, setSelectedPlan, selectedBank, setSelectedBank
   }
 
   return (
