@@ -27,7 +27,8 @@ const Profile = () => {
     if (!isLoggedIn) return;
     (async () => {
       try {
-        await fetchUserBalance(); // sets userBalance
+        await fetchUserBalance(); // sets userBalance in context
+
         const res = await axios.get("/api/v1/users/orders");
         if (res.data?.success && Array.isArray(res.data.orders)) {
           const pendingSum = res.data.orders
@@ -43,8 +44,13 @@ const Profile = () => {
     })();
   }, [isLoggedIn, axios, fetchUserBalance]);
 
+  // balances
   const available = Number(userBalance || 0);
-  const total = useMemo(() => available + Number(processingBalance || 0), [available, processingBalance]);
+  const availableAfterHold = Math.max(0, available - Number(processingBalance || 0)); // show holds deducted
+  const total = useMemo(
+    () => availableAfterHold + Number(processingBalance || 0),
+    [availableAfterHold, processingBalance]
+  );
 
   const handleBack = () => {
     if (window.history.length > 2) navigate(-1);
@@ -114,9 +120,9 @@ const Profile = () => {
               loading
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(total)
+                    style: "currency",
+                    currency: "USD",
+                  }).format(total)
             }
           />
 
@@ -126,9 +132,9 @@ const Profile = () => {
               loading
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(available)
+                    style: "currency",
+                    currency: "USD",
+                  }).format(availableAfterHold)
             }
           />
 
@@ -138,9 +144,9 @@ const Profile = () => {
               loading
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(Number(processingBalance))
+                    style: "currency",
+                    currency: "USD",
+                  }).format(Number(processingBalance))
             }
           />
         </div>
@@ -167,7 +173,7 @@ const Profile = () => {
 const BalanceBox = ({ label, value }) => (
   <div className="bg-[#1E293B] p-3 rounded">
     <p className="text-gray-400 text-xs">{label}</p>
-    <p className={`text-sm font-bold`}>{value}</p>
+    <p className="text-sm font-bold">{value}</p>
   </div>
 );
 
