@@ -110,17 +110,39 @@ const Profile = () => {
         <div className="grid grid-cols-3 gap-2 mt-6 text-center text-sm">
           <BalanceBox
             label="Total"
-            value={loading ? "…" : `$${total.toFixed(2)}`}
-          />
-          <BalanceBox
-            label="Available"
-            value={loading ? "…" : `$${available.toFixed(2)}`}
-          />
-          <BalanceBox
-            label="Processing"
-            value={loading ? "…" : `$${Number(processingBalance).toFixed(2)}`}
+            value={
+              loading
+                ? "…"
+                : new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                }).format(total)
+            }
           />
 
+          <BalanceBox
+            label="Available"
+            value={
+              loading
+                ? "…"
+                : new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                }).format(available)
+            }
+          />
+
+          <BalanceBox
+            label="Processing"
+            value={
+              loading
+                ? "…"
+                : new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                }).format(Number(processingBalance))
+            }
+          />
         </div>
 
         {/* Action List */}
