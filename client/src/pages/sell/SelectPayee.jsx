@@ -6,37 +6,23 @@ import { Trash2 } from 'lucide-react';
 
 const SelectPayee = () => {
   const navigate = useNavigate();
-  const { axios, selectedPlan, setSelectedBank } = useAppContext(); // ✅ Include selectedPlan from context
+  const { axios, selectedPlan, setSelectedBank } = useAppContext();
   const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true); // ✅ new state
   const [showModal, setShowModal] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
 
   const fetchAccounts = async () => {
     try {
+      setLoading(true); // ✅ start loading
       const res = await axios.get("/api/v1/users/accounts");
       if (res.data.success) {
         setAccounts(res.data.accounts);
       }
     } catch (err) {
       toast.error("Failed to load bank accounts");
-    }
-  };
-
-  const confirmDelete = (id) => {
-    setSelectedAccountId(id);
-    setShowModal(true);
-  };
-
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`/api/v1/users/accounts/${selectedAccountId}`);
-      toast.success("Account deleted");
-      fetchAccounts(); // Refresh the list
-    } catch (err) {
-      toast.error("Failed to delete account");
     } finally {
-      setShowModal(false);
-      setSelectedAccountId(null);
+      setLoading(false); // ✅ stop loading
     }
   };
 
@@ -55,73 +41,70 @@ const SelectPayee = () => {
 
       {/* Account Cards */}
       <div className="space-y-4">
-        {accounts.length === 0 && (
+        {loading ? ( // ✅ show loading message
+          <p className="text-center text-gray-400">Loading Bank Accounts...</p>
+        ) : accounts.length === 0 ? (
           <p className="text-center text-gray-400">No accounts found</p>
-        )}
-
-        {accounts.map((acc) => (
-          <div
-            key={acc._id}
-            className="bg-[#1e293b] rounded-xl p-4 text-sm relative space-y-2 transition"
-          >
-            {/* Clickable Account Info */}
+        ) : (
+          accounts.map((acc) => (
             <div
-              onClick={() => {
-                setSelectedBank(acc);
-                navigate('/sell', {
-                  state: {
-                    selectedAccount: acc,
-                    selectedPlan,
-                  },
-                }); navigate('/sell', {
-                  state: {
-                    plan: selectedPlan,
-                    price: selectedPlan === 'Basic' ? 85 : 90, // or whatever logic you're using
-                    selectedAccount: acc, // keep this if you’ll later use it
-                  },
-                });
-
-              }}
-              className="space-y-2 cursor-pointer hover:bg-[#334155] p-2 rounded-md"
+              key={acc._id}
+              className="bg-[#1e293b] rounded-xl p-4 text-sm relative space-y-2 transition"
             >
-              <div className="flex justify-between border-b border-[#334155] pb-1">
-                <span className="text-white/70">Account No</span>
-                <span className="font-semibold">{acc.accountNumber}</span>
-              </div>
-
-              <div className="flex justify-between border-b border-[#334155] pb-1">
-                <span className="text-white/70">IFSC</span>
-                <span className="font-semibold">{acc.ifsc}</span>
-              </div>
-
-              <div className="flex justify-between border-b border-[#334155] pb-1">
-                <span className="text-white/70">Account Name</span>
-                <span className="font-semibold">{acc.holderName}</span>
-              </div>
-            </div>
-
-            {/* Bottom Row */}
-            <div className="flex justify-between items-center pt-2">
-              <div>
-                <p className="text-white/70">Create time</p>
-                <p className="font-semibold">
-                  {new Date(acc.createdAt).toISOString().split(".")[0].replace("T", " ")}
-                </p>
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  confirmDelete(acc._id);
+              {/* Clickable Account Info */}
+              <div
+                onClick={() => {
+                  setSelectedBank(acc);
+                  navigate('/sell', {
+                    state: {
+                      plan: selectedPlan,
+                      price: selectedPlan === 'Basic' ? 85 : 90,
+                      selectedAccount: acc,
+                    },
+                  });
                 }}
-                className="bg-[#0f172a] hover:bg-red-700 p-2 rounded-xl transition"
+                className="space-y-2 cursor-pointer hover:bg-[#334155] p-2 rounded-md"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                <div className="flex justify-between border-b border-[#334155] pb-1">
+                  <span className="text-white/70">Account No</span>
+                  <span className="font-semibold">{acc.accountNumber}</span>
+                </div>
+                <div className="flex justify-between border-b border-[#334155] pb-1">
+                  <span className="text-white/70">IFSC</span>
+                  <span className="font-semibold">{acc.ifsc}</span>
+                </div>
+                <div className="flex justify-between border-b border-[#334155] pb-1">
+                  <span className="text-white/70">Account Name</span>
+                  <span className="font-semibold">{acc.holderName}</span>
+                </div>
+              </div>
 
+              {/* Bottom Row */}
+              <div className="flex justify-between items-center pt-2">
+                <div>
+                  <p className="text-white/70">Create time</p>
+                  <p className="font-semibold">
+                    {new Date(acc.createdAt)
+                      .toISOString()
+                      .split(".")[0]
+                      .replace("T", " ")}
+                  </p>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAccountId(acc._id);
+                    setShowModal(true);
+                  }}
+                  className="bg-[#0f172a] hover:bg-red-700 p-2 rounded-xl transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Add Account Button */}
