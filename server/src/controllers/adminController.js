@@ -4,7 +4,8 @@ import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 
-const isManual = (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
+const isManual =
+  (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
 
 /**
  * GET /admin/transactions
@@ -39,11 +40,17 @@ export const getAdminStats = async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const startOfLastMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() - 1,
+      1
+    );
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
     // Users registered today
-    const todayNewUsers = await User.countDocuments({ createdAt: { $gte: today } });
+    const todayNewUsers = await User.countDocuments({
+      createdAt: { $gte: today },
+    });
 
     // Users registered last month (whole month)
     const lastMonthUsers = await User.countDocuments({
@@ -78,13 +85,17 @@ export const updateOrderStatus = async (req, res) => {
   const { status } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, message: "Invalid order ID" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid order ID" });
   }
 
   try {
     const order = await Order.findById(id);
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
 
     // Lock: only from 'pending'
@@ -114,10 +125,10 @@ export const updateOrderStatus = async (req, res) => {
     if (isManual) {
       const adjustments = await BalanceAdjustment.find({ userId: order.user });
       const totalCredits = adjustments
-        .filter(a => a.type === "credit")
+        .filter((a) => a.type === "credit")
         .reduce((s, a) => s + a.amount, 0);
       const totalDebits = adjustments
-        .filter(a => a.type === "deduct")
+        .filter((a) => a.type === "deduct")
         .reduce((s, a) => s + a.amount, 0);
       availableBalance = totalCredits - totalDebits;
     } else {
@@ -172,7 +183,7 @@ export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .sort({ createdAt: -1 })
-      .populate("bankAccount"); // only if bankAccount is a ref
+      .populate("bankAccount", "holderName accountNumber ifsc");
 
     res.status(200).json({ success: true, orders });
   } catch (err) {

@@ -113,7 +113,7 @@ const OrderManagement = () => {
     try {
       setUpdatingId(orderId);
       const res = await axios.put(`/api/v1/users/admin/orders/${orderId}`, { status: newStatus });
-      if (res.data.success) {
+    if (res.data.success) {
         toast.success(`Order ${newStatus}`);
         await fetchOrders();
       } else {
@@ -139,11 +139,11 @@ const OrderManagement = () => {
   // client-side filter
   const filteredOrders = useMemo(() => {
     if (!debounced) return orders;
-
     const match = (v) => String(v ?? "").toLowerCase().includes(debounced);
 
     return orders.filter((o) => {
       const last6 = o?._id?.slice(-6) || "";
+      const ba = o.bankAccount || o.bankAccountSnapshot || {};
       return (
         match(o?._id) ||
         match(last6) ||
@@ -152,10 +152,9 @@ const OrderManagement = () => {
         match(o?.price) ||
         match(o?.amount) ||
         match(o?.inrAmount) ||
-        match(o?.bankAccount?.holderName) ||
-        match(o?.bankAccount?.accountNumber) ||
-        match(o?.bankAccount?.ifsc) ||
-        match(o?.bankAccount?.bankName) ||
+        match(ba?.holderName) ||
+        match(ba?.accountNumber) ||
+        match(ba?.ifsc) ||
         match(o?.createdAt && new Date(o.createdAt).toLocaleString()) ||
         match(o?.completedAt && new Date(o.completedAt).toLocaleString())
       );
@@ -224,6 +223,12 @@ const OrderManagement = () => {
                 const isPending = order.status === "pending";
                 const disabled = !isPending || updatingId === order._id;
 
+                // pick populated object or snapshot
+                const ba = order.bankAccount || order.bankAccountSnapshot || {};
+                const name = ba.holderName ?? "N/A";
+                const ac   = ba.accountNumber ?? "N/A";
+                const ifsc = ba.ifsc ?? "N/A";
+
                 return (
                   <tr key={order._id} className="align-top">
                     <td className="px-4 py-3">{order._id?.slice(-6)}</td>
@@ -232,10 +237,7 @@ const OrderManagement = () => {
                     <td className="px-4 py-3">USDT {order.amount}</td>
                     <td className="px-4 py-3">INR {order.inrAmount}</td>
                     <td className="px-4 py-3 whitespace-pre-line">
-                      Name: {order.bankAccount?.holderName || "N/A"}
-                      {"\n"}AC No: {order.bankAccount?.accountNumber || "N/A"}
-                      {"\n"}IFSC: {order.bankAccount?.ifsc || "N/A"}
-                      {"\n"}Bank: {order.bankAccount?.bankName || "N/A"}
+                      {`Name: ${name}\nAC No: ${ac}\nIFSC: ${ifsc}`}
                     </td>
                     <td className="px-4 py-3">
                       <span className={statusBadge(order.status)}>{order.status}</span>

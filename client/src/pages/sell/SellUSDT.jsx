@@ -52,11 +52,11 @@ const SellUSDT = () => {
       return;
     }
 
-    // if (plan === 'Basic' && (num < 100 || num > 5000)) {
-    //   setError('Basic plan allows 100 to 5000 USDT only');
-    //   setInrAmount(0);
-    //   return;
-    // }
+    if (plan === 'Basic' && (num < 100 || num > 5000)) {
+      setError('Basic plan allows 100 to 5000 USDT only');
+      setInrAmount(0);
+      return;
+    }
 
     if (plan === 'VIP' && num <= 5000) {
       setError('VIP plan allows more than 5000 USDT');
@@ -172,11 +172,11 @@ const SellUSDT = () => {
           )}
         </div>
 
-        {/* {userBalance < 100 && (
+        {userBalance < 100 && (
           <div className="text-red-400 text-xs mt-1">
             You cannot sell below 100 USDT
           </div>
-        )} */}
+        )}
 
         <div className="text-md font-semibold mt-1">
           You will receive: <span className="text-green-400">{inrAmount || 0} ₹</span>
