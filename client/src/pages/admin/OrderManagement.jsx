@@ -24,19 +24,19 @@ const ConfirmModal = ({
   const v =
     variant === "danger"
       ? {
-          ring: "ring-red-500/30",
-          border: "border-red-600",
-          header: "text-red-300",
-          iconBg: "bg-red-600",
-          btn: "bg-red-600 hover:bg-red-700",
-        }
+        ring: "ring-red-500/30",
+        border: "border-red-600",
+        header: "text-red-300",
+        iconBg: "bg-red-600",
+        btn: "bg-red-600 hover:bg-red-700",
+      }
       : {
-          ring: "ring-green-500/30",
-          border: "border-green-600",
-          header: "text-green-300",
-          iconBg: "bg-green-600",
-          btn: "bg-green-600 hover:bg-green-700",
-        };
+        ring: "ring-green-500/30",
+        border: "border-green-600",
+        header: "text-green-300",
+        iconBg: "bg-green-600",
+        btn: "bg-green-600 hover:bg-green-700",
+      };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
@@ -115,7 +115,15 @@ const OrderManagement = () => {
       const res = await axios.put(`/api/v1/users/admin/orders/${orderId}`, { status: newStatus });
       if (res.data.success) {
         toast.success(`Order ${newStatus}`);
-        await fetchOrders();
+
+        // 👇 Turant frontend state update
+        setOrders((prev) =>
+          prev.map((o) =>
+            o._id === orderId
+              ? { ...o, status: newStatus, completedAt: new Date().toISOString() }
+              : o
+          )
+        );
       } else {
         toast.error(res.data.message || "Failed to update status");
       }
@@ -152,7 +160,7 @@ const OrderManagement = () => {
         match(o?.price) ||
         match(o?.amount) ||
         match(o?.inrAmount) ||
-        match(ba?.accountHolder) ||   // 👈 accountHolder
+        match(ba?.accountHolder) ||
         match(ba?.accountNumber) ||
         match(ba?.ifsc) ||
         match(o?.createdAt && new Date(o.createdAt).toLocaleString()) ||
@@ -225,8 +233,8 @@ const OrderManagement = () => {
 
                 // embedded object only
                 const ba = order.bankAccount || {};
-                const name = ba.accountHolder ?? "N/A";  // 👈 accountHolder
-                const ac   = ba.accountNumber ?? "N/A";
+                const name = ba.accountHolder ?? "N/A";
+                const ac = ba.accountNumber ?? "N/A";
                 const ifsc = ba.ifsc ?? "N/A";
 
                 return (
