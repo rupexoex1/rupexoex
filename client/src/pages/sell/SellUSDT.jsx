@@ -183,22 +183,6 @@ const SellUSDT = () => {
         </div>
       </div>
 
-      {/* Exchange Slabs UI */}
-      <div className="bg-[#1e293b] w-full max-w-md rounded-lg p-4 text-xs space-y-2 mb-6">
-        <div className="flex justify-between">
-          <span>&gt;=1075.27 and &lt;2150.57</span>
-          <span className="text-green-300">93 + 0.25</span>
-        </div>
-        <div className="flex justify-between">
-          <span>&gt;=2150.54 and &lt;3225.81</span>
-          <span className="text-green-300">93 + 0.5</span>
-        </div>
-        <div className="flex justify-between">
-          <span>&gt;=3225.81</span>
-          <span className="text-green-300">93 + 1</span>
-        </div>
-      </div>
-
       {/* Confirm Button */}
       <button
         onClick={handleConfirm}
