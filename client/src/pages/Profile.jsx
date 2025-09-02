@@ -167,7 +167,7 @@ const Profile = () => {
 const BalanceBox = ({ label, value }) => (
   <div className="bg-[#1E293B] p-3 rounded">
     <p className="text-gray-400 text-xs">{label}</p>
-    <p className={`text-xs font-bold`}>{value}</p>
+    <p className={`text-sm font-bold`}>{value}</p>
   </div>
 );
 
