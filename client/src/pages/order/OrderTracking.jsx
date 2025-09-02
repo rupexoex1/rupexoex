@@ -22,24 +22,21 @@ const Step = ({ title, subtitle, active, done, danger = false, last = false }) =
     {/* line */}
     {!last && (
       <div
-        className={`absolute left-[11px] top-5 h-full w-[2px] ${
-          done ? (danger ? "bg-red-500" : "bg-emerald-500") : "bg-slate-700"
-        }`}
+        className={`absolute left-[11px] top-5 h-full w-[2px] ${done ? (danger ? "bg-red-500" : "bg-emerald-500") : "bg-slate-700"
+          }`}
       />
     )}
 
     {/* dot */}
     <div
-      className={`absolute left-0 top-1.5 h-5 w-5 rounded-full border-2 ${
-        done ? (danger ? "border-red-500 bg-red-500" : "border-emerald-500 bg-emerald-500") : "border-slate-500 bg-slate-900"
-      }`}
+      className={`absolute left-0 top-1.5 h-5 w-5 rounded-full border-2 ${done ? (danger ? "border-red-500 bg-red-500" : "border-emerald-500 bg-emerald-500") : "border-slate-500 bg-slate-900"
+        }`}
     />
 
     <div className="mb-6">
       <div
-        className={`font-semibold ${
-          danger ? "text-red-400" : done ? "text-emerald-400" : active ? "text-white" : "text-slate-300"
-        }`}
+        className={`font-semibold ${danger ? "text-red-400" : done ? "text-emerald-400" : active ? "text-white" : "text-slate-300"
+          }`}
       >
         {title}
       </div>
@@ -160,8 +157,8 @@ const OrderTracking = () => {
     order?.status === "confirmed"
       ? "from-emerald-600/25 to-emerald-400/10 border-emerald-500/30"
       : order?.status === "failed"
-      ? "from-red-600/25 to-red-400/10 border-red-500/30"
-      : "from-amber-600/25 to-amber-400/10 border-amber-500/30";
+        ? "from-red-600/25 to-red-400/10 border-red-500/30"
+        : "from-amber-600/25 to-amber-400/10 border-amber-500/30";
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#0b1220] text-slate-100 px-4 md:px-8 py-6">
@@ -170,12 +167,15 @@ const OrderTracking = () => {
         className={`rounded-2xl border ${headerAccent} bg-gradient-to-br p-5 md:p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4`}
       >
         <div>
-          <div className="text-sm text-slate-300/80">Order ID</div>
+          <div className="text-sm text-slate-300/80">Order#</div>
           <div className="flex items-center gap-2 mt-1">
+            {/* 👇 yahan short id (last 6) show karo */}
             <code className="text-base md:text-lg tracking-wide bg-black/30 px-2.5 py-1.5 rounded-md">
-              {order?._id || id}
+              {(order?._id || id || "").slice(-6) || "--"}
             </code>
-            <CopyButton text={order?._id || id} />
+
+            {/* 👇 is button se abhi bhi FULL ID copy hogi (good UX) */}
+            <CopyButton text={order?._id || id} label="Copy Full ID" />
           </div>
           <div className="mt-3 flex items-center gap-3">
             <StatusPill status={order?.status || "pending"} />
@@ -241,8 +241,8 @@ const OrderTracking = () => {
                   order?.status === "pending"
                     ? "Awaiting admin action"
                     : order?.status === "failed"
-                    ? "This order was marked as failed"
-                    : "Admin has confirmed your order"
+                      ? "This order was marked as failed"
+                      : "Admin has confirmed your order"
                 }
                 active={order?.status === "pending"}
                 done={stepState.step2.done}
@@ -342,9 +342,8 @@ const OrderTracking = () => {
                 onClick={() => {
                   const text = `Order ${order?._id}\nStatus: ${order?.status}\nAmount: USDT ${order?.amount} (${formatINR(
                     order?.inrAmount
-                  )})\nCreated: ${formatDateTime(order?.createdAt)}\n${
-                    order?.completedAt ? "Completed: " + formatDateTime(order.completedAt) : ""
-                  }`;
+                  )})\nCreated: ${formatDateTime(order?.createdAt)}\n${order?.completedAt ? "Completed: " + formatDateTime(order.completedAt) : ""
+                    }`;
                   navigator.clipboard.writeText(text);
                   toast.success("Order summary copied");
                 }}
