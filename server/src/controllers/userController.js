@@ -39,6 +39,15 @@ const computeAvailableBalance = async (userId) => {
   }
 };
 
+// helpers (imports ke baad)
+const computePendingOrderHold = async (userId) => {
+  const uid = new mongoose.Types.ObjectId(userId);
+  const pending = await Order.find({ user: uid, status: "pending" }).select(
+    "amount"
+  );
+  return pending.reduce((s, o) => s + Number(o.amount || 0), 0);
+};
+
 export const adminLogin = (req, res) => {
   res.json({ message: "Welcome Admin" });
 };
@@ -458,32 +467,49 @@ export const adminAdjustUserBalance = async (req, res) => {
 
 // POST /api/v1/users/withdrawals
 // EXISTING createWithdrawal ko is version se replace karein:
+// ---- REPLACE your existing createWithdrawal with this ----
 export const createWithdrawal = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
     const { address, amount, network = "TRC20" } = req.body;
 
+    // basic validation
     const amt = Number(amount);
-    if (!address)
+    if (!address) {
       return res
         .status(400)
         .json({ success: false, message: "Address is required" });
-    if (!amt || amt <= 0)
+    }
+    if (!amt || amt <= 0) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid amount" });
+    }
 
-    const feeUSD = 7; // fixed fee
+    const feeUSD = 7; // fixed withdraw fee
     const totalDebit = amt + feeUSD;
 
+    // 1) compute available (same formula as /balance)
     const availableBalance = await computeAvailableBalance(userId);
 
-    if (totalDebit > availableBalance) {
+    // 2) compute processing hold (sum of pending orders)
+    const processingHold = await computePendingOrderHold(userId);
+
+    // 3) allowed withdraw amount BEFORE fee
+    const withdrawableBeforeFee = Math.max(
+      0,
+      availableBalance - processingHold
+    );
+
+    // 4) enforce: (amount + fee) <= (available - processingHold)
+    if (totalDebit > withdrawableBeforeFee) {
       return res.status(400).json({
         success: false,
         message: "Withdraw exceeds available balance",
         details: {
           availableBalance: Number(availableBalance.toFixed(4)),
+          processingHold: Number(processingHold.toFixed(4)),
+          allowedAfterHolds: Number(withdrawableBeforeFee.toFixed(4)),
           amount: amt,
           feeUSD,
           required: Number(totalDebit.toFixed(4)),
@@ -491,7 +517,7 @@ export const createWithdrawal = async (req, res) => {
       });
     }
 
-    // Create withdrawal row
+    // 5) create withdrawal row
     const wd = await Withdrawal.create({
       user: userId,
       address,
@@ -501,14 +527,26 @@ export const createWithdrawal = async (req, res) => {
       status: "pending",
     });
 
-    // HOLD funds via BalanceAdjustment deduct (amount + fee)
-    await new BalanceAdjustment({
-      userId,
-      amount: totalDebit,
-      type: "deduct",
-      reason: `withdrawal_hold:${wd._id}`,
-      createdBy: userId,
-    }).save();
+    // 6) create HOLD (deduct) so balance reflects the request immediately
+    try {
+      await new BalanceAdjustment({
+        userId,
+        amount: totalDebit, // amount + fee
+        type: "deduct",
+        reason: `withdrawal_hold:${wd._id}`,
+        createdBy: userId,
+      }).save();
+    } catch (holdErr) {
+      // if hold fails, rollback the created withdrawal
+      await Withdrawal.findByIdAndDelete(wd._id);
+      console.error("withdrawal hold creation failed:", holdErr);
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message: "Failed to hold funds for withdrawal",
+        });
+    }
 
     return res.json({ success: true, withdrawal: wd });
   } catch (err) {

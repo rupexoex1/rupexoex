@@ -6,35 +6,52 @@ import { useAppContext } from "../context/AppContext";
 import { toast } from "react-hot-toast";
 
 const NETWORK = "USDT -TRC20";
-const FIXED_FEE_USD = 7; // 🔒 keep in sync with backend
+const FIXED_FEE_USD = 7; // keep in sync with backend
 
 export default function WithdrawUSDT() {
   const navigate = useNavigate();
   const { axios, userBalance, fetchUserBalance } = useAppContext();
 
-  // ui state
+  // ui
   const [loading, setLoading] = useState(true);
 
-  // form state
+  // form
   const [address, setAddress] = useState("");
-  const [amount, setAmount] = useState(""); // user-entered USDT
+  const [amount, setAmount] = useState("");
 
-  // load balance
+  // holds
+  const [processingHold, setProcessingHold] = useState(0); // sum of user's pending orders (USDT)
+
+  // load balance + processing hold
   useEffect(() => {
     (async () => {
       try {
         await fetchUserBalance();
+        // fetch user's orders and compute pending sum (USDT)
+        const res = await axios.get("/api/v1/users/orders");
+        if (res.data?.success && Array.isArray(res.data.orders)) {
+          const pendingSum = res.data.orders
+            .filter((o) => o.status === "pending")
+            .reduce((s, o) => s + Number(o.amount || 0), 0);
+          setProcessingHold(pendingSum);
+        } else {
+          setProcessingHold(0);
+        }
       } catch (e) {
-        console.error(e);
+        console.error("withdraw init error:", e);
+        setProcessingHold(0);
       } finally {
         setLoading(false);
       }
     })();
-  }, [fetchUserBalance]);
+  }, [axios, fetchUserBalance]);
 
+  // balances
   const available = Number(userBalance || 0);
+  const withdrawableForUser = Math.max(0, available - Number(processingHold || 0));
+  const maxWithdrawable = Math.max(0, withdrawableForUser - FIXED_FEE_USD);
+
   const parsedAmt = Number(amount || 0);
-  const maxWithdrawable = Math.max(0, available - FIXED_FEE_USD);
 
   const errors = useMemo(() => {
     const e = [];
@@ -42,7 +59,11 @@ export default function WithdrawUSDT() {
     if (!amount) e.push("Withdraw amount is required.");
     if (parsedAmt <= 0) e.push("Enter a valid amount.");
     if (parsedAmt > maxWithdrawable)
-      e.push(`Amount exceeds maximum withdrawable (${maxWithdrawable.toFixed(2)} after $${FIXED_FEE_USD} fee).`);
+      e.push(
+        `Amount exceeds maximum withdrawable (${maxWithdrawable.toFixed(
+          2
+        )} after $${FIXED_FEE_USD} fee & processing hold).`
+      );
     return e;
   }, [address, amount, parsedAmt, maxWithdrawable]);
 
@@ -52,20 +73,20 @@ export default function WithdrawUSDT() {
   };
 
   const fillMax = () => {
-    if (available <= FIXED_FEE_USD) {
-      toast.error(`Not enough balance after $${FIXED_FEE_USD} fee.`);
+    if (maxWithdrawable <= 0) {
+      toast.error("Nothing withdrawable after fee & processing hold.");
       return;
     }
     setAmount(maxWithdrawable.toFixed(2));
   };
 
   const submit = async () => {
-    // client-side guard (mirrors server)
-    if (parsedAmt + FIXED_FEE_USD > available) {
+    // mirror server logic: (amount + fee) must be <= withdrawableForUser
+    if (parsedAmt + FIXED_FEE_USD > withdrawableForUser) {
       toast.error(
-        `Insufficient: need ${(parsedAmt + FIXED_FEE_USD).toFixed(2)}, have ${available.toFixed(
+        `Insufficient after holds: need ${(parsedAmt + FIXED_FEE_USD).toFixed(
           2
-        )} (incl. $${FIXED_FEE_USD} fee).`
+        )}, allowed ${withdrawableForUser.toFixed(2)} (incl. $${FIXED_FEE_USD} fee).`
       );
       return;
     }
@@ -79,24 +100,23 @@ export default function WithdrawUSDT() {
       const res = await axios.post("/api/v1/users/withdrawals", {
         network: "TRC20",
         address,
-        amount: parsedAmt, // net USDT the user will receive (fee is separate)
+        amount: parsedAmt,
       });
 
       if (res.data?.success) {
         toast.success("Withdrawal request submitted.");
         await fetchUserBalance();
-        navigate("/user-transactions"); // or "/profile"
+        navigate("/user-transactions");
       } else {
         toast.error(res.data?.message || "Failed to submit withdrawal.");
       }
     } catch (err) {
       const msg = err?.response?.data?.message || "Failed to submit withdrawal.";
-      // if backend returns details, surface them
       const details = err?.response?.data?.details;
       if (details) {
         toast.error(
-          `${msg}: need ${Number(details.required).toFixed(2)}, have ${Number(
-            details.availableBalance
+          `${msg}: need ${Number(details.required).toFixed(2)}, allowed ${Number(
+            details.allowedAfterHolds ?? details.availableBalance
           ).toFixed(2)}`
         );
       } else {
@@ -174,9 +194,14 @@ export default function WithdrawUSDT() {
             </div>
 
             {/* Inline helper */}
-            <div className="mt-2 text-[11px] text-gray-300">
-              Available: {available.toFixed(2)} — Fee: ${FIXED_FEE_USD.toFixed(2)} —{" "}
-              Max withdrawable: {maxWithdrawable.toFixed(2)} USDT
+            <div className="mt-2 text-[11px] text-gray-300 space-y-1">
+              <div>Available: {available.toFixed(2)} USDT</div>
+              <div>Processing hold: {Number(processingHold || 0).toFixed(2)} USDT</div>
+              <div>Withdrawable (before fee): {withdrawableForUser.toFixed(2)} USDT</div>
+              <div>Fee: ${FIXED_FEE_USD.toFixed(2)}</div>
+              <div className="font-medium">
+                Max withdrawable (after fee): {maxWithdrawable.toFixed(2)} USDT
+              </div>
             </div>
           </div>
         </div>
