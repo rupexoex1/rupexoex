@@ -8,7 +8,6 @@ import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 import Setting from "../models/settingModel.js";
 import Withdrawal from "../models/withdrawalModel.js"
-import User from "../models/userModel.js"
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const isManual =
