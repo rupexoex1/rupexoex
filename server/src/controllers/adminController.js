@@ -189,3 +189,57 @@ export const getAllOrders = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
 };
+
+// GET /api/v1/users/admin/withdrawals
+export const adminListWithdrawals = async (_req, res) => {
+  try {
+    const rows = await Withdrawal.find({})
+      .populate("user", "email")
+      .sort({ createdAt: -1 });
+    return res.json({ success: true, withdrawals: rows });
+  } catch (err) {
+    console.error("adminListWithdrawals error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// PUT /api/v1/users/admin/withdrawals/:id
+export const adminUpdateWithdrawalStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // "approved" | "rejected"
+
+    if (!["approved", "rejected"].includes(status)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status" });
+    }
+
+    const wd = await Withdrawal.findById(id);
+    if (!wd)
+      return res.status(404).json({ success: false, message: "Not found" });
+    if (wd.status !== "pending") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Already processed" });
+    }
+
+    // if rejected, refund the amount to user's balance
+    if (status === "rejected") {
+      const user = await User.findById(wd.user).select("balance");
+      if (user) {
+        user.balance = Number(user.balance || 0) + Number(wd.amount || 0);
+        await user.save();
+      }
+    }
+
+    wd.status = status;
+    wd.completedAt = new Date();
+    await wd.save();
+
+    return res.json({ success: true, withdrawal: wd });
+  } catch (err) {
+    console.error("adminUpdateWithdrawalStatus error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};

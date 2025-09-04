@@ -1,38 +1,60 @@
+// routes/userRoutes.js
 import express from "express";
 import User from "../models/userModel.js";
 
+import verifyToken from "../middlewares/authMiddleware.js";
+import authorizeRoles from "../middlewares/roleMiddleware.js";
+
 import {
+  // auth / user basics
   adminLogin,
   managerLogin,
   publicInfo,
   userLogin,
+
+  // wallet & txns
   checkUSDTDeposit,
   getUserTransactions,
   getVirtualBalance,
+
+  // bank accounts
   addBankAccount,
   getBankAccounts,
   deleteBankAccount,
   selectBankAccount,
   getSelectedBankAccount,
+
+  // orders
   placeOrder,
   getUserOrders,
   getOrderById,
+
+  // settings & admin balance adj
   getSettings,
   updateSettings,
   adminAdjustUserBalance,
+
+  // 💸 withdrawals (NEW)
+  createWithdrawal,      // POST /withdrawals (user)
+  getMyWithdrawals,      // GET  /withdrawals (user)  [optional UI]
 } from "../controllers/userController.js";
 
-import verifyToken from "../middlewares/authMiddleware.js";
-import authorizeRoles from "../middlewares/roleMiddleware.js";
 import {
   getAdminStats,
   getAllTransactions,
   updateOrderStatus,
   getAllOrders,
+
+  // 💸 withdrawals admin (NEW)
+  adminListWithdrawals,          // GET /admin/withdrawals
+  adminUpdateWithdrawalStatus,   // PUT /admin/withdrawals/:id
 } from "../controllers/adminController.js";
 
 const userRoutes = express.Router();
 
+/* =========================
+   Health
+========================= */
 userRoutes.get("/__ping", (req, res) => {
   res.json({
     ok: true,
@@ -64,14 +86,12 @@ userRoutes.get(
   "/admin/users",
   verifyToken,
   authorizeRoles("admin"),
-  async (req, res) => {
+  async (_req, res) => {
     try {
       const users = await User.find().sort({ createdAt: -1 });
       res.status(200).json({ success: true, users });
     } catch (err) {
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to fetch users" });
+      res.status(500).json({ success: false, message: "Failed to fetch users" });
     }
   }
 );
@@ -86,21 +106,12 @@ userRoutes.patch(
       const { role } = req.body;
 
       if (!["admin", "manager", "user"].includes(role)) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid role value" });
+        return res.status(400).json({ success: false, message: "Invalid role value" });
       }
 
-      const updatedUser = await User.findByIdAndUpdate(
-        id,
-        { role },
-        { new: true }
-      );
-
+      const updatedUser = await User.findByIdAndUpdate(id, { role }, { new: true });
       if (!updatedUser) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
+        return res.status(404).json({ success: false, message: "User not found" });
       }
 
       res.status(200).json({
@@ -110,9 +121,7 @@ userRoutes.patch(
       });
     } catch (err) {
       console.error("Update role error:", err.message);
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to update user role" });
+      res.status(500).json({ success: false, message: "Failed to update user role" });
     }
   }
 );
@@ -162,6 +171,21 @@ userRoutes.get(
   getAllOrders
 );
 
+/* ========== 💸 Withdrawals (ADMIN) — NEW ========== */
+userRoutes.get(
+  "/admin/withdrawals",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  adminListWithdrawals
+);
+
+userRoutes.put(
+  "/admin/withdrawals/:id",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  adminUpdateWithdrawalStatus
+);
+
 /* =========================
    Authenticated User routes
 ========================= */
@@ -187,23 +211,24 @@ userRoutes.get(
    Bank Accounts
 ========================= */
 userRoutes.post("/accounts", verifyToken, addBankAccount);
-
 userRoutes.get("/accounts", verifyToken, getBankAccounts);
-
 userRoutes.delete("/accounts/:id", verifyToken, deleteBankAccount);
-
 userRoutes.put("/accounts/select/:id", verifyToken, selectBankAccount);
-
 userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
 
 /* =========================
    Orders
 ========================= */
 userRoutes.post("/orders", verifyToken, placeOrder);
-
 userRoutes.get("/orders", verifyToken, getUserOrders);
-
 userRoutes.get("/orders/:id", verifyToken, getOrderById);
+
+/* ========== 💸 Withdrawals (USER) — NEW ========== */
+// Create a withdrawal request
+userRoutes.post("/withdrawals", verifyToken, createWithdrawal);
+
+// (Optional) List my own withdrawal requests for a "My Withdrawals" page
+userRoutes.get("/withdrawals", verifyToken, getMyWithdrawals);
 
 /* =========================
    Public route

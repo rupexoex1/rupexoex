@@ -15,6 +15,7 @@ import ResetPassword from "./components/admin/ResetPassword"
 import AdminLayout from "./pages/admin/AdminLayout"
 import Deposit from "./pages/deposit/Deposit"
 import SellUSDT from "./pages/sell/SellUSDT"
+import WithdrawUSDT from "./pages/WithdrawUSDT"
 
 import { useAppContext } from "./context/AppContext"
 import Dashboard from "./pages/admin/Dashboard"
@@ -31,6 +32,7 @@ import AddBankAccount from "./pages/sell/AddBankAccount"
 import OrderTracking from "./pages/order/OrderTracking"
 import MasterWalletSettings from "./pages/admin/MasterWalletSettings"
 import BalanceAdjust from "./pages/admin/BalanceAdjust"
+import WithdrawalsManagement from "./pages/admin/WithdrawalsManagement"
 
 const App = () => {
   const { token } = useAppContext()
@@ -53,6 +55,7 @@ const App = () => {
           <Route path="/verify-reset-otp" element={<VerifyResetOtp />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/deposit" element={<Deposit />} />
+          <Route path="/withdraw" element={<WithdrawUSDT />} />
           <Route path="/user-transactions" element={<UserTransactions />} />
           <Route path="/sell" element={<SellUSDT />} />
           <Route path="/select-payee" element={<SelectPayee />} />
@@ -72,10 +75,9 @@ const App = () => {
             <Route path="role" element={<RoleManagement />} />
             <Route path="settings" element={<MasterWalletSettings />} />
             <Route path="adjust-balance" element={<BalanceAdjust />} />
+            <Route path="/admin/withdrawals" element={<WithdrawalsManagement />} />
           </Route>
         </Route>
-
-
       </Routes >
     </>
   )

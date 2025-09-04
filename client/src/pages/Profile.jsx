@@ -120,9 +120,9 @@ const Profile = () => {
               loading
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(total)
+                  style: "currency",
+                  currency: "USD",
+                }).format(total)
             }
           />
 
@@ -132,9 +132,9 @@ const Profile = () => {
               loading
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(availableAfterHold)
+                  style: "currency",
+                  currency: "USD",
+                }).format(availableAfterHold)
             }
           />
 
@@ -144,9 +144,9 @@ const Profile = () => {
               loading
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(Number(processingBalance))
+                  style: "currency",
+                  currency: "USD",
+                }).format(Number(processingBalance))
             }
           />
         </div>
@@ -157,7 +157,7 @@ const Profile = () => {
           <ActionItem iconSrc={assets.recent_transaction} label="Recent USDT Transactions" link="/user-transactions" />
           <ActionItem iconSrc={assets.bank_account} label="Bank Accounts" link="/select-payee" />
           <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" />
-          <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" />
+          <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" link="/withdraw" />
         </div>
 
         {/* Signout */}

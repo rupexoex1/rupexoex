@@ -428,3 +428,70 @@ export const adminAdjustUserBalance = async (req, res) => {
       .json({ success: false, message: "Failed to adjust balance" });
   }
 };
+
+// POST /api/v1/users/withdrawals
+export const createWithdrawal = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id; // depends on your auth middleware
+    const { address, amount, network = "TRC20" } = req.body;
+
+    const amt = Number(amount);
+    if (!address)
+      return res
+        .status(400)
+        .json({ success: false, message: "Address is required" });
+    if (!amt || amt <= 0)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amount" });
+
+    const user = await User.findById(userId).select("balance");
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+
+    if (amt > Number(user.balance || 0)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Amount exceeds available balance" });
+    }
+
+    // OPTIONAL: read fee from settings model if you want
+    // const settings = await Setting.findOne({});
+    // const feeUSD = Number(settings?.withdrawFeeUSD ?? 6);
+    const feeUSD = 6;
+
+    // Deduct immediately so balance reflects “hold”
+    user.balance = Number(user.balance) - amt;
+    await user.save();
+
+    const wd = await Withdrawal.create({
+      user: userId,
+      address,
+      network,
+      amount: amt,
+      feeUSD,
+      status: "pending",
+    });
+
+    return res.json({ success: true, withdrawal: wd });
+  } catch (err) {
+    console.error("createWithdrawal error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// (Optional) GET /api/v1/users/withdrawals  => user's own requests
+export const getMyWithdrawals = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?._id;
+    const rows = await Withdrawal.find({ user: userId }).sort({
+      createdAt: -1,
+    });
+    return res.json({ success: true, withdrawals: rows });
+  } catch (err) {
+    console.error("getMyWithdrawals error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
