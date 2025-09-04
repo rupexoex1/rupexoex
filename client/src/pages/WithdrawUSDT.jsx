@@ -125,3 +125,89 @@ export default function WithdrawUSDT() {
         </div>
 
         {/* Card */}
+        <div className="bg-[#1E293B] rounded p-4">
+          {/* Network */}
+          <label className="block text-sm text-gray-300 mb-2">Network</label>
+          <div className="bg-[#0F172A] rounded px-3 py-3 text-sm flex items-center gap-2">
+            <div className="w-5 h-5 bg-green-600 rounded-full grid place-items-center text-[10px]">T</div>
+            <span>{NETWORK}</span>
+          </div>
+
+          {/* Address */}
+          <div className="mt-4">
+            <label className="block text-sm text-gray-300 mb-2">Wallet address</label>
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Please enter Wallet Address"
+              className="w-full bg-[#0F172A] border border-[#334155] rounded px-3 py-2 text-sm outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Amount + Withdraw All */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm text-gray-300">Withdraw Amount</label>
+              <button
+                type="button"
+                onClick={fillMax}
+                className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-700"
+              >
+                Withdraw All
+              </button>
+            </div>
+
+            <div className="flex">
+              <input
+                value={amount}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^\d.]/g, "");
+                  setAmount(v);
+                }}
+                placeholder="— — —"
+                className="flex-1 bg-[#0F172A] border border-r-0 border-[#334155] rounded-l px-3 py-2 text-sm outline-none focus:border-blue-500"
+                inputMode="decimal"
+              />
+              <div className="bg-[#0F172A] border border-l-0 border-[#334155] rounded-r px-3 py-2 text-xs grid place-items-center">
+                USDT
+              </div>
+            </div>
+
+            {/* Inline helper */}
+            <div className="mt-2 text-[11px] text-gray-300">
+              Available: {available.toFixed(2)} — Fee: ${FIXED_FEE_USD.toFixed(2)} —{" "}
+              Max withdrawable: {maxWithdrawable.toFixed(2)} USDT
+            </div>
+          </div>
+        </div>
+
+        {/* Info box */}
+        <div className="mt-4 bg-gradient-to-br from-[#0b1220] to-[#0f1b33] rounded p-4 border border-[#1b2740]">
+          <div className="w-6 h-6 bg-blue-600 rounded grid place-items-center text-white text-xs mb-2">i</div>
+          <p className="text-[11px] leading-5 text-gray-300">
+            For the safety of your funds, please note that the recharge address for each order may be
+            different. Please double-check carefully to avoid the risk of irretrievable funds.
+          </p>
+        </div>
+
+        {/* Confirm */}
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="mt-5 w-full bg-[#2563eb] hover:bg-[#1e4fd3] disabled:opacity-50 rounded py-3 text-sm font-semibold"
+        >
+          {loading ? "Processing…" : "Confirm"}
+        </button>
+
+        {/* Client-side errors list */}
+        {!!errors.length && (
+          <ul className="mt-3 text-xs text-red-300 list-disc list-inside space-y-1">
+            {errors.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
