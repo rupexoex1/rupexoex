@@ -4,7 +4,6 @@ import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 import Withdrawal from "../models/withdrawalModel.js";
-import User from "../models/userModel.js";
 
 const isManual =
   (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
@@ -34,7 +33,6 @@ export const getAllTransactions = async (req, res) => {
 
 /**
  * GET /admin/dashboard-stats
- * Simple example: today new users + % change vs last month total (same as your previous)
  */
 export const getAdminStats = async (req, res) => {
   try {
@@ -49,12 +47,10 @@ export const getAdminStats = async (req, res) => {
     );
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
-    // Users registered today
     const todayNewUsers = await User.countDocuments({
       createdAt: { $gte: today },
     });
 
-    // Users registered last month (whole month)
     const lastMonthUsers = await User.countDocuments({
       createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
     });
@@ -100,7 +96,6 @@ export const updateOrderStatus = async (req, res) => {
         .json({ success: false, message: "Order not found" });
     }
 
-    // Lock: only from 'pending'
     if (order.status !== "pending") {
       return res.status(400).json({
         success: false,
@@ -115,15 +110,13 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Has this order already been deducted? (shouldn't happen when pending, but safety)
     const alreadyDeducted = await BalanceAdjustment.findOne({
       orderId: order._id,
       type: "deduct",
     });
 
-    // Calculate available balance per mode
+    // compute available
     let availableBalance = 0;
-
     if (isManual) {
       const adjustments = await BalanceAdjustment.find({ userId: order.user });
       const totalCredits = adjustments
@@ -162,7 +155,6 @@ export const updateOrderStatus = async (req, res) => {
       }
     }
 
-    // If failed: no deduction
     order.status = status;
     order.completedAt = new Date();
     await order.save();
@@ -180,17 +172,18 @@ export const updateOrderStatus = async (req, res) => {
 
 /**
  * GET /admin/orders
- * (EMBEDDED bankAccount — no populate)
  */
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }); // 👈 populate removed
+    const orders = await Order.find().sort({ createdAt: -1 });
     res.status(200).json({ success: true, orders });
   } catch (err) {
     console.error("Error fetching orders:", err);
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
 };
+
+/* ========== Withdrawals (ADMIN) ========== */
 
 // GET /api/v1/users/admin/withdrawals
 export const adminListWithdrawals = async (_req, res) => {
@@ -205,58 +198,18 @@ export const adminListWithdrawals = async (_req, res) => {
   }
 };
 
-export const adminUpdateWithdrawalStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body; // "approved" | "rejected"
-
-    if (!["approved", "rejected"].includes(status)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid status" });
-    }
-
-    const wd = await Withdrawal.findById(id);
-    if (!wd)
-      return res.status(404).json({ success: false, message: "Not found" });
-    if (wd.status !== "pending") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Already processed" });
-    }
-
-    // If you want fee refunded on reject, refund (amount + feeUSD).
-    // If fee is non-refundable, refund only amount.
-    const refundFull = true;
-
-    if (status === "rejected") {
-      const user = await User.findById(wd.user).select("balance");
-      if (user) {
-        const refund = refundFull
-          ? Number(wd.amount) + Number(wd.feeUSD || 0)
-          : Number(wd.amount);
-        user.balance = Number(user.balance || 0) + refund;
-        await user.save();
-      }
-    }
-
-    wd.status = status;
-    wd.completedAt = new Date();
-    await wd.save();
-
-    return res.json({ success: true, withdrawal: wd });
-  } catch (err) {
-    console.error("adminUpdateWithdrawalStatus error:", err);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
 // PUT /api/v1/users/admin/withdrawals/:id
 export const adminUpdateWithdrawalStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body; // "approved" | "rejected"
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid withdrawal ID" });
+    }
+
     if (!["approved", "rejected"].includes(status)) {
       return res
         .status(400)
@@ -264,23 +217,36 @@ export const adminUpdateWithdrawalStatus = async (req, res) => {
     }
 
     const wd = await Withdrawal.findById(id);
-    if (!wd)
-      return res.status(404).json({ success: false, message: "Not found" });
+    if (!wd) return res.status(404).json({ success: false, message: "Not found" });
     if (wd.status !== "pending") {
       return res
         .status(400)
         .json({ success: false, message: "Already processed" });
     }
 
-    // if rejected, refund the amount to user's balance
+    // If REJECTED → refund the hold (amount + fee) via BalanceAdjustment credit.
     if (status === "rejected") {
-      const user = await User.findById(wd.user).select("balance");
-      if (user) {
-        user.balance = Number(user.balance || 0) + Number(wd.amount || 0);
-        await user.save();
+      const refundAmount = Number(wd.amount || 0) + Number(wd.feeUSD || 0);
+
+      // idempotency guard: don't double-refund the same withdrawal
+      const alreadyRefunded = await BalanceAdjustment.findOne({
+        userId: wd.user,
+        type: "credit",
+        reason: `withdrawal_refund:${wd._id}`,
+      });
+
+      if (!alreadyRefunded) {
+        await new BalanceAdjustment({
+          userId: wd.user,
+          amount: refundAmount,
+          type: "credit",
+          reason: `withdrawal_refund:${wd._id}`,
+          createdBy: req.user?._id,
+        }).save();
       }
     }
 
+    // If APPROVED → do nothing to balance; funds already held on create
     wd.status = status;
     wd.completedAt = new Date();
     await wd.save();
