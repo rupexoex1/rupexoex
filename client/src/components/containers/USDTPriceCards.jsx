@@ -2,7 +2,6 @@ import React, { useRef } from "react";
 import PriceCard from "./PriceCard";
 import { useAppContext } from "../../context/AppContext";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";
 
 const USDTPriceCards = () => {
   const {
@@ -17,10 +16,10 @@ const USDTPriceCards = () => {
   } = useAppContext();
 
   const navigate = useNavigate();
-  const navigatingRef = useRef(false); // prevent double navigation
+  const navigatingRef = useRef(false);
 
   const handleSelect = (plan) => {
-    if (navigatingRef.current) return; // guard
+    if (navigatingRef.current) return;
     const selectedPrice = plan === "Basic" ? basicPrice : vipPrice;
 
     if (!token) {
@@ -40,9 +39,10 @@ const USDTPriceCards = () => {
     else navigate("/deposit");
   };
 
-  // dynamic ranges from context
-  const basicRange = `${basicMin}$ - ${basicMax}$`;
-  const vipRange = `>${vipMin - 1}$`; // e.g., >5000$
+  // ✅ Dynamic Ranges
+  const basicRange =
+    basicMin && basicMax ? `${basicMin}$ - ${basicMax}$` : "—";
+  const vipRange = vipMin ? `>${vipMin}$` : "—";
 
   return (
     <div className="bg-secondary flex flex-col items-center justify-center rounded-xl px-4 py-4 mb-4">
