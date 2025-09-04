@@ -1,6 +1,5 @@
 import express from "express";
 import User from "../models/userModel.js";
-import Rate from "../models/rateModel.js";
 
 import {
   adminLogin,
@@ -22,6 +21,7 @@ import {
   updateSettings,
   adminAdjustUserBalance,
 } from "../controllers/userController.js";
+
 import verifyToken from "../middlewares/authMiddleware.js";
 import authorizeRoles from "../middlewares/roleMiddleware.js";
 import {
@@ -41,20 +41,25 @@ userRoutes.get("/__ping", (req, res) => {
   });
 });
 
-// Only admin can access this router
+/* =========================
+   Admin-only routes
+========================= */
 userRoutes.get("/admin", verifyToken, authorizeRoles("admin"), adminLogin);
+
 userRoutes.get(
   "/admin/transactions",
   verifyToken,
   authorizeRoles("admin", "manager"),
   getAllTransactions
 );
+
 userRoutes.get(
   "/admin/dashboard-stats",
   verifyToken,
   authorizeRoles("admin", "manager"),
   getAdminStats
 );
+
 userRoutes.get(
   "/admin/users",
   verifyToken,
@@ -70,6 +75,7 @@ userRoutes.get(
     }
   }
 );
+
 userRoutes.patch(
   "/admin/users/:id/role",
   verifyToken,
@@ -110,18 +116,21 @@ userRoutes.patch(
     }
   }
 );
+
 userRoutes.get(
   "/admin/settings",
   verifyToken,
   authorizeRoles("admin"),
   getSettings
 );
+
 userRoutes.put(
   "/admin/settings",
   verifyToken,
   authorizeRoles("admin"),
   updateSettings
 );
+
 userRoutes.post(
   "/admin/users/:id/adjust-balance",
   verifyToken,
@@ -129,49 +138,23 @@ userRoutes.post(
   adminAdjustUserBalance
 );
 
-// Both admin and manager can access this router
+/* =========================
+   Admin + Manager routes
+========================= */
 userRoutes.get(
   "/manager",
   verifyToken,
   authorizeRoles("admin", "manager"),
   managerLogin
 );
-userRoutes.put(
-  "/rates",
-  verifyToken,
-  authorizeRoles("admin", "manager"),
-  async (req, res) => {
-    try {
-      const { basic, vip } = req.body;
 
-      let rate = await Rate.findOne();
-      if (rate) {
-        rate.basic = basic;
-        rate.vip = vip;
-        await rate.save();
-      } else {
-        await Rate.create({ basic, vip });
-      }
-
-      res.json({
-        success: true,
-        message: "Rates updated successfully",
-        basic: rate.basic,
-        vip: rate.vip,
-      });
-    } catch (err) {
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to update rates" });
-    }
-  }
-);
 userRoutes.put(
   "/admin/orders/:id",
   verifyToken,
   authorizeRoles("admin", "manager"),
   updateOrderStatus
 );
+
 userRoutes.get(
   "/admin/orders",
   verifyToken,
@@ -179,42 +162,52 @@ userRoutes.get(
   getAllOrders
 );
 
-// All authenticated/registered users can access this router
+/* =========================
+   Authenticated User routes
+========================= */
 userRoutes.get(
   "/user",
   verifyToken,
   authorizeRoles("admin", "manager", "user"),
   userLogin
 );
+
 userRoutes.post("/check-deposit", verifyToken, checkUSDTDeposit);
+
 userRoutes.get("/transactions", verifyToken, getUserTransactions);
+
 userRoutes.get(
   "/balance",
   verifyToken,
   authorizeRoles("admin", "manager", "user"),
   getVirtualBalance
 );
-userRoutes.post("/accounts", verifyToken, addBankAccount);
-userRoutes.get("/accounts", verifyToken, getBankAccounts);
-userRoutes.delete("/accounts/:id", verifyToken, deleteBankAccount);
-userRoutes.put("/accounts/select/:id", verifyToken, selectBankAccount);
-userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
-userRoutes.post("/orders", verifyToken, placeOrder);
-userRoutes.get("/orders", verifyToken, getUserOrders);
-userRoutes.get("/orders/:id", verifyToken, getOrderById);
-userRoutes.get("/rates", async (req, res) => {
-  try {
-    let rate = await Rate.findOne();
-    if (!rate) {
-      rate = await Rate.create({ basic: "91.50", vip: "94.00" });
-    }
-    res.json({ success: true, basic: rate.basic, vip: rate.vip });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch rates" });
-  }
-});
 
-// All unauthenticated/unregistered users can access this router
+/* =========================
+   Bank Accounts
+========================= */
+userRoutes.post("/accounts", verifyToken, addBankAccount);
+
+userRoutes.get("/accounts", verifyToken, getBankAccounts);
+
+userRoutes.delete("/accounts/:id", verifyToken, deleteBankAccount);
+
+userRoutes.put("/accounts/select/:id", verifyToken, selectBankAccount);
+
+userRoutes.get("/accounts/selected", verifyToken, getSelectedBankAccount);
+
+/* =========================
+   Orders
+========================= */
+userRoutes.post("/orders", verifyToken, placeOrder);
+
+userRoutes.get("/orders", verifyToken, getUserOrders);
+
+userRoutes.get("/orders/:id", verifyToken, getOrderById);
+
+/* =========================
+   Public route
+========================= */
 userRoutes.get("/public-info", publicInfo);
 
 export default userRoutes;

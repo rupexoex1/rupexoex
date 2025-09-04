@@ -40,6 +40,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1", ratesRoutes);
 
+
 // Start the server
 const PORT = process.env.PORT || 7002;
 app.listen(PORT, () => {
