@@ -3,6 +3,8 @@ import Transaction from "../models/transactionModel.js";
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
+import Withdrawal from "../models/withdrawalModel.js";
+import User from "../models/userModel.js";
 
 const isManual =
   (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
@@ -199,6 +201,52 @@ export const adminListWithdrawals = async (_req, res) => {
     return res.json({ success: true, withdrawals: rows });
   } catch (err) {
     console.error("adminListWithdrawals error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const adminUpdateWithdrawalStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // "approved" | "rejected"
+
+    if (!["approved", "rejected"].includes(status)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status" });
+    }
+
+    const wd = await Withdrawal.findById(id);
+    if (!wd)
+      return res.status(404).json({ success: false, message: "Not found" });
+    if (wd.status !== "pending") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Already processed" });
+    }
+
+    // If you want fee refunded on reject, refund (amount + feeUSD).
+    // If fee is non-refundable, refund only amount.
+    const refundFull = true;
+
+    if (status === "rejected") {
+      const user = await User.findById(wd.user).select("balance");
+      if (user) {
+        const refund = refundFull
+          ? Number(wd.amount) + Number(wd.feeUSD || 0)
+          : Number(wd.amount);
+        user.balance = Number(user.balance || 0) + refund;
+        await user.save();
+      }
+    }
+
+    wd.status = status;
+    wd.completedAt = new Date();
+    await wd.save();
+
+    return res.json({ success: true, withdrawal: wd });
+  } catch (err) {
+    console.error("adminUpdateWithdrawalStatus error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

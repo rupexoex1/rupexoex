@@ -7,6 +7,8 @@ import BankAccount from "../models/BankAccountModel.js";
 import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 import Setting from "../models/settingModel.js";
+import Withdrawal from "../models/withdrawalModel.js"
+import User from "../models/userModel.js"
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const isManual =
@@ -432,38 +434,25 @@ export const adminAdjustUserBalance = async (req, res) => {
 // POST /api/v1/users/withdrawals
 export const createWithdrawal = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id; // depends on your auth middleware
+    const userId = req.user?.id || req.user?._id;
     const { address, amount, network = "TRC20" } = req.body;
 
     const amt = Number(amount);
-    if (!address)
-      return res
-        .status(400)
-        .json({ success: false, message: "Address is required" });
-    if (!amt || amt <= 0)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid amount" });
+    if (!address) return res.status(400).json({ success: false, message: "Address is required" });
+    if (!amt || amt <= 0) return res.status(400).json({ success: false, message: "Invalid amount" });
 
     const user = await User.findById(userId).select("balance");
-    if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (amt > Number(user.balance || 0)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Amount exceeds available balance" });
+    const feeUSD = 7; // 🔒 fixed fee
+    const totalDebit = amt + feeUSD;
+
+    if (totalDebit > Number(user.balance || 0)) {
+      return res.status(400).json({ success: false, message: "Withdraw exceeds available balance" });
     }
 
-    // OPTIONAL: read fee from settings model if you want
-    // const settings = await Setting.findOne({});
-    // const feeUSD = Number(settings?.withdrawFeeUSD ?? 6);
-    const feeUSD = 6;
-
-    // Deduct immediately so balance reflects “hold”
-    user.balance = Number(user.balance) - amt;
+    // Hold funds immediately: deduct amount + fee
+    user.balance = Number(user.balance) - totalDebit;
     await user.save();
 
     const wd = await Withdrawal.create({
@@ -482,16 +471,16 @@ export const createWithdrawal = async (req, res) => {
   }
 };
 
+
 // (Optional) GET /api/v1/users/withdrawals  => user's own requests
 export const getMyWithdrawals = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
-    const rows = await Withdrawal.find({ user: userId }).sort({
-      createdAt: -1,
-    });
+    const rows = await Withdrawal.find({ user: userId }).sort({ createdAt: -1 });
     return res.json({ success: true, withdrawals: rows });
   } catch (err) {
     console.error("getMyWithdrawals error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
