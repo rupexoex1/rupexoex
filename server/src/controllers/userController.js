@@ -7,11 +7,37 @@ import BankAccount from "../models/BankAccountModel.js";
 import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 import Setting from "../models/settingModel.js";
-import Withdrawal from "../models/withdrawalModel.js"
+import Withdrawal from "../models/withdrawalModel.js";
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const isManual =
   (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
+
+// TOP me (imports ke baad) yeh helper add kar dein:
+const computeAvailableBalance = async (userId) => {
+  const uid = new mongoose.Types.ObjectId(userId);
+
+  if ((process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual") {
+    const adjustments = await BalanceAdjustment.find({ userId: uid });
+    const totalCredits = adjustments
+      .filter((a) => a.type === "credit")
+      .reduce((s, a) => s + a.amount, 0);
+    const totalDebits = adjustments
+      .filter((a) => a.type === "deduct")
+      .reduce((s, a) => s + a.amount, 0);
+    return totalCredits - totalDebits;
+  } else {
+    const [txs, adjustments] = await Promise.all([
+      Transaction.find({ userId: uid, status: "forwarded" }),
+      BalanceAdjustment.find({ userId: uid }),
+    ]);
+    const totalForwarded = txs.reduce((s, tx) => s + tx.amount, 0);
+    const totalDebits = adjustments
+      .filter((a) => a.type === "deduct")
+      .reduce((s, a) => s + a.amount, 0);
+    return totalForwarded - totalDebits;
+  }
+};
 
 export const adminLogin = (req, res) => {
   res.json({ message: "Welcome Admin" });
@@ -431,29 +457,41 @@ export const adminAdjustUserBalance = async (req, res) => {
 };
 
 // POST /api/v1/users/withdrawals
+// EXISTING createWithdrawal ko is version se replace karein:
 export const createWithdrawal = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
     const { address, amount, network = "TRC20" } = req.body;
 
     const amt = Number(amount);
-    if (!address) return res.status(400).json({ success: false, message: "Address is required" });
-    if (!amt || amt <= 0) return res.status(400).json({ success: false, message: "Invalid amount" });
+    if (!address)
+      return res
+        .status(400)
+        .json({ success: false, message: "Address is required" });
+    if (!amt || amt <= 0)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amount" });
 
-    const user = await User.findById(userId).select("balance");
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-    const feeUSD = 7; // 🔒 fixed fee
+    const feeUSD = 7; // fixed fee
     const totalDebit = amt + feeUSD;
 
-    if (totalDebit > Number(user.balance || 0)) {
-      return res.status(400).json({ success: false, message: "Withdraw exceeds available balance" });
+    const availableBalance = await computeAvailableBalance(userId);
+
+    if (totalDebit > availableBalance) {
+      return res.status(400).json({
+        success: false,
+        message: "Withdraw exceeds available balance",
+        details: {
+          availableBalance: Number(availableBalance.toFixed(4)),
+          amount: amt,
+          feeUSD,
+          required: Number(totalDebit.toFixed(4)),
+        },
+      });
     }
 
-    // Hold funds immediately: deduct amount + fee
-    user.balance = Number(user.balance) - totalDebit;
-    await user.save();
-
+    // Create withdrawal row
     const wd = await Withdrawal.create({
       user: userId,
       address,
@@ -463,6 +501,15 @@ export const createWithdrawal = async (req, res) => {
       status: "pending",
     });
 
+    // HOLD funds via BalanceAdjustment deduct (amount + fee)
+    await new BalanceAdjustment({
+      userId,
+      amount: totalDebit,
+      type: "deduct",
+      reason: `withdrawal_hold:${wd._id}`,
+      createdBy: userId,
+    }).save();
+
     return res.json({ success: true, withdrawal: wd });
   } catch (err) {
     console.error("createWithdrawal error:", err);
@@ -470,16 +517,16 @@ export const createWithdrawal = async (req, res) => {
   }
 };
 
-
 // (Optional) GET /api/v1/users/withdrawals  => user's own requests
 export const getMyWithdrawals = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
-    const rows = await Withdrawal.find({ user: userId }).sort({ createdAt: -1 });
+    const rows = await Withdrawal.find({ user: userId }).sort({
+      createdAt: -1,
+    });
     return res.json({ success: true, withdrawals: rows });
   } catch (err) {
     console.error("getMyWithdrawals error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
