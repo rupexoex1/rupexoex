@@ -47,6 +47,18 @@ const Sidebar = () => {
         <p className="hidden md:inline-block">Order Management</p>
       </NavLink>
 
+      {/* 🔥 New Withdrawals Management tab */}
+      <NavLink
+        to="/admin/withdrawals"
+        className={({ isActive }) =>
+          `flex items-center gap-3 py-3.5 px-3 md:px-9 md:min-w-64 cursor-pointer ${isActive && "bg-primary/10 border-r-4 border-primary"}`
+        }
+      >
+        {/* if you have a “money” or “withdraw” icon in assets, replace this temporary comment_icon */}
+        <img src={assets.comment_icon} alt="" className="min-w-4 w-5" />
+        <p className="hidden md:inline-block">Withdrawals</p>
+      </NavLink>
+
       <NavLink
         to="/admin/transactions"
         className={({ isActive }) =>
@@ -83,20 +95,16 @@ const Sidebar = () => {
           `flex items-center gap-3 py-3.5 px-3 md:px-9 md:min-w-64 cursor-pointer ${isActive && "bg-primary/10 border-r-4 border-primary"}`
         }
       >
-        {/* agar koi "money" / "adjust" icon ho to use kar lena; warna temporary comment_icon chal jayega */}
         <img src={assets.comment_icon} alt="" className="min-w-4 w-5" />
         <p className="hidden md:inline-block">Balance Adjust</p>
       </NavLink>
 
-
-      {/* 🔥 New tab: Master Wallet Settings */}
       <NavLink
         to="/admin/settings"
         className={({ isActive }) =>
           `flex items-center gap-3 py-3.5 px-3 md:px-9 md:min-w-64 cursor-pointer ${isActive && "bg-primary/10 border-r-4 border-primary"}`
         }
       >
-        {/* agar assets me settings icon ho to use karein; warna temporary comment_icon use kar raha hun */}
         <img src={assets.comment_icon} alt="" className="min-w-4 w-5" />
         <p className="hidden md:inline-block">Master Wallet</p>
       </NavLink>
