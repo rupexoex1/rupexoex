@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { useAppContext } from '../../context/AppContext';
+import React, { useState, useEffect } from "react";
+import { useAppContext } from "../../context/AppContext";
 
 const RateManagement = () => {
   const {
-    basicPrice, vipPrice,
-    basicMin, basicMax, vipMin,
-    setBasicPrice, setVipPrice,
-    setBasicMin, setBasicMax, setVipMin,
-    axios, fetchPricesFromBackend,
+    basicPrice,
+    vipPrice,
+    basicMin,
+    basicMax,
+    vipMin,
+    setBasicPrice,
+    setVipPrice,
+    setBasicMin,
+    setBasicMax,
+    setVipMin,
+    axios,
+    fetchPricesFromBackend,
   } = useAppContext();
 
   const [newBasic, setNewBasic] = useState(basicPrice);
@@ -16,7 +23,7 @@ const RateManagement = () => {
   const [nbMax, setNbMax] = useState(basicMax);
   const [nvMin, setNvMin] = useState(vipMin);
 
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
     setNewBasic(basicPrice);
@@ -27,51 +34,65 @@ const RateManagement = () => {
   }, [basicPrice, vipPrice, basicMin, basicMax, vipMin]);
 
   const handleUpdate = async () => {
-    try {
-      if (Number(nbMin) >= Number(nbMax)) {
-        setStatus('Basic Min must be less than Basic Max ❌');
-        return;
-      }
-      if (Number(nvMin) <= Number(nbMax)) {
-        setStatus('VIP Min should be greater than Basic Max ❌');
-        return;
-      }
+    // basic sanity checks
+    const bMin = Number(nbMin);
+    const bMax = Number(nbMax);
+    const vMin = Number(nvMin);
 
+    if (Number.isNaN(bMin) || Number.isNaN(bMax) || Number.isNaN(vMin)) {
+      setStatus("All limits must be valid numbers ❌");
+      return;
+    }
+    if (bMin >= bMax) {
+      setStatus("Basic Min must be less than Basic Max ❌");
+      return;
+    }
+    if (vMin <= bMax) {
+      setStatus("VIP Min should be greater than Basic Max ❌");
+      return;
+    }
+
+    try {
       const payload = {
-        basic: newBasic,
-        vip: newVip,
-        basicMin: Number(nbMin),
-        basicMax: Number(nbMax),
-        vipMin: Number(nvMin),
+        basic: String(newBasic),
+        vip: String(newVip),
+        basicMin: bMin,
+        basicMax: bMax,
+        vipMin: vMin,
       };
 
-      const res = await axios.put('/api/v1/users/rates', payload);
+      // ✅ Correct admin endpoint
+      const res = await axios.put("/api/v1/admin/rates", payload);
 
-      if (res.data.success) {
-        // update local context
-        setBasicPrice(String(payload.basic));
-        setVipPrice(String(payload.vip));
+      if (res.data?.success) {
+        // Update local context optimistically
+        setBasicPrice(payload.basic);
+        setVipPrice(payload.vip);
         setBasicMin(payload.basicMin);
         setBasicMax(payload.basicMax);
         setVipMin(payload.vipMin);
 
-        // re-fetch to keep single source of truth
+        // Re-fetch from backend as single source of truth
         await fetchPricesFromBackend();
 
-        setStatus('Prices & plan limits updated successfully ✅');
-        setTimeout(() => setStatus(''), 3000);
+        setStatus("Prices & plan limits updated successfully ✅");
+        setTimeout(() => setStatus(""), 3000);
       } else {
-        setStatus(res.data.message || 'Failed to update prices ❌');
+        setStatus(res.data?.message || "Failed to update prices ❌");
       }
     } catch (err) {
-      console.error('Update error:', err);
-      setStatus(err?.response?.data?.message || 'Failed to update prices ❌');
+      console.error("Update error:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to update prices ❌";
+      setStatus(msg);
     }
   };
 
   return (
     <div className="p-6 max-w-md mx-auto bg-[#151d2e] rounded-lg shadow text-white">
-      <h2 className="text-xl font-semibold mb-4">Rate & Plan Management</h2>
+      <h2 className="text-xl font-semibold mb-4">Rate &amp; Plan Management</h2>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -132,7 +153,15 @@ const RateManagement = () => {
         Update
       </button>
 
-      {status && <p className="mt-2 text-sm text-green-400 font-light">{status}</p>}
+      {status && (
+        <p className="mt-2 text-sm font-light">
+          {status.includes("✅") ? (
+            <span className="text-green-400">{status}</span>
+          ) : (
+            <span className="text-red-400">{status}</span>
+          )}
+        </p>
+      )}
     </div>
   );
 };
