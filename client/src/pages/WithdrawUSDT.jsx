@@ -19,7 +19,7 @@ export default function WithdrawUSDT() {
     (async () => {
       try {
         await fetchUserBalance();
-      } catch {}
+      } catch { }
       setLoading(false);
     })();
   }, [fetchUserBalance]);
@@ -73,7 +73,7 @@ export default function WithdrawUSDT() {
       if (res.data?.success) {
         toast.success("Withdrawal request submitted.");
         await fetchUserBalance();
-        navigate("/user-transactions");
+        navigate(`/withdraw-tracking/${res.data.withdrawal._id}`);
       } else {
         toast.error(res.data?.message || "Failed to submit withdrawal.");
       }

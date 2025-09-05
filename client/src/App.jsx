@@ -16,6 +16,7 @@ import AdminLayout from "./pages/admin/AdminLayout"
 import Deposit from "./pages/deposit/Deposit"
 import SellUSDT from "./pages/sell/SellUSDT"
 import WithdrawUSDT from "./pages/WithdrawUSDT"
+import WithdrawTracking from "./pages/WithdrawTracking";
 
 import { useAppContext } from "./context/AppContext"
 import Dashboard from "./pages/admin/Dashboard"
@@ -61,6 +62,7 @@ const App = () => {
           <Route path="/select-payee" element={<SelectPayee />} />
           <Route path="/add-bank-account" element={<AddBankAccount />} />
           <Route path="/order-tracking/:id" element={<OrderTracking />} />
+          <Route path="/withdraw-tracking/:id" element={<WithdrawTracking />} />
         </Route>
 
 
