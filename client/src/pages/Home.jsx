@@ -13,10 +13,15 @@ import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 
 const Home = () => {
+  // get axios + virtual balance from context
+  const { axios, userBalance } = useAppContext();
 
-  const { user, userBalance } = useAppContext();
   const [userName, setUserName] = useState("")
   const [userRole, setUserRole] = useState("")
+  const [processingHold, setProcessingHold] = useState(0); // sum of pending orders (USDT)
+  const [loadingHold, setLoadingHold] = useState(true);
+
+  const isLoggedIn = !!localStorage.getItem('token');
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'))
@@ -28,6 +33,38 @@ const Home = () => {
       setUserRole("")
     }
   }, [])
+
+  // fetch user's pending orders → processing hold
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setProcessingHold(0);
+      setLoadingHold(false);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await axios.get("/api/v1/users/orders");
+        if (res.data?.success && Array.isArray(res.data.orders)) {
+          const pendingSum = res.data.orders
+            .filter(o => o.status === "pending")
+            .reduce((s, o) => s + Number(o.amount || 0), 0);
+          setProcessingHold(pendingSum);
+        } else {
+          setProcessingHold(0);
+        }
+      } catch (e) {
+        console.error("home: fetch processing hold error:", e);
+        setProcessingHold(0);
+      } finally {
+        setLoadingHold(false);
+      }
+    })();
+  }, [axios, isLoggedIn]);
+
+  // derive balances
+  const available = Number(userBalance || 0); // virtual balance from backend
+  const availableAfterHold = Math.max(0, available - Number(processingHold || 0));
+
   // Logic for name with role
   let nameWithRole = "Guest";
   if (userName && userRole) {
@@ -46,7 +83,6 @@ const Home = () => {
 
   return (
     <div className='rich-text'>
-
       {/* MAIN HEADER */}
       <div className='bg-secondary rounded-b-3xl pt-5 pb-2'>
         <div className='flex justify-between items-center'>
@@ -61,6 +97,7 @@ const Home = () => {
             </NavLink>
           )}
         </div>
+
         <div className="flex items-center justify-between mt-2 px-4 py-2 rounded-lg w-full max-w-md">
           {/* Avatar */}
           <div className="flex items-center gap-3 cursor-pointer">
@@ -70,36 +107,45 @@ const Home = () => {
               className="w-12 h-12 rounded-full border-2 border-blue-500"
             />
             <div className="flex flex-col">
-              {
-                nameWithRole == "Guest" ?
-                  <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                    Welcome to Rupexo
-                  </h2> :
-                  <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }).format(userBalance ?? 0)}
-                  </h2>
-
-              }
+              {nameWithRole === "Guest" ? (
+                <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
+                  Welcome to Rupexo
+                </h2>
+              ) : (
+                <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
+                  {
+                    loadingHold
+                      ? "…"
+                      : new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(availableAfterHold)
+                  }
+                </h2>
+              )}
               <p className="rich-text text-xs mb-1">{nameWithRole}</p>
+              {/* optional helper line to explain deduction */}
+              {isLoggedIn && !loadingHold && (
+                <p className="text-[10px] text-gray-400">
+                  (Available after holds: {availableAfterHold.toFixed(2)} | Holds: {Number(processingHold || 0).toFixed(2)})
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Icon */}
+          {/* Support Icon */}
           <div className="w-10 h-10 rounded-full flex items-center justify-center">
             <a
               href='https://wa.me/923236619004?text=Hello%20Rupexo%20Support'
               target='_blank'
+              rel="noreferrer"
             >
               <img
-                src={bot} // Replace with actual icon
-                alt="Headset"
+                src={bot}
+                alt="Support"
                 className="w-10 h-10 cursor-pointer"
               />
             </a>
-
           </div>
         </div>
       </div>
