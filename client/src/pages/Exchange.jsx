@@ -1,3 +1,4 @@
+// src/pages/Exchange.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Headset, Wallet2, Info, ShieldCheck, HelpCircle } from "lucide-react";
@@ -73,15 +74,16 @@ const Exchange = () => {
     navigate("/sell", { state: { plan: selectedPlan } });
   };
 
-  const StatTile = ({ label, value, icon }) => (
+  const StatTile = ({ label, value, icon, valueClassName = "text-xs" }) => (
     <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3 flex items-center gap-3">
       <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700">{icon}</div>
       <div className="flex-1">
         <div className="text-xs text-slate-400">{label}</div>
-        <div className="text-sm font-semibold">
+        <div className={`${valueClassName} font-semibold`}>
           {loading
             ? "…"
-            : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0))}
+            : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
+                .format(Number(value || 0))}
         </div>
       </div>
     </div>
@@ -143,9 +145,7 @@ const Exchange = () => {
         <section className="rounded-2xl border border-slate-800 bg-[#0f192f] p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold">Select a Plan</h2>
-            <div className="text-xs text-slate-400">
-              Live rates update from settings
-            </div>
+            <div className="text-xs text-slate-400">Live rates update from settings</div>
           </div>
 
           {/* Your existing cards */}
