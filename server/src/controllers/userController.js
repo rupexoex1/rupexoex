@@ -39,14 +39,6 @@ const computeAvailableBalance = async (userId) => {
   }
 };
 
-const computePendingOrderHold = async (userId) => {
-  const uid = new mongoose.Types.ObjectId(userId);
-  const pending = await Order.find({ user: uid, status: "pending" })
-    .select("amount")
-    .lean();
-  return pending.reduce((s, o) => s + Number(o.amount || 0), 0);
-};
-
 // helpers (imports ke baad)
 const computePendingOrderHold = async (userId) => {
   const uid = new mongoose.Types.ObjectId(userId);
