@@ -83,6 +83,7 @@ const Home = () => {
 
   return (
     <div className='rich-text'>
+
       {/* MAIN HEADER */}
       <div className='bg-secondary rounded-b-3xl pt-5 pb-2'>
         <div className='flex justify-between items-center'>
@@ -127,7 +128,7 @@ const Home = () => {
               {/* optional helper line to explain deduction */}
               {isLoggedIn && !loadingHold && (
                 <p className="text-[10px] text-gray-400">
-                  (Available after holds: {availableAfterHold.toFixed(2)} | Holds: {Number(processingHold || 0).toFixed(2)})
+                  (After holds: {availableAfterHold.toFixed(2)} | Holds: {Number(processingHold || 0).toFixed(2)})
                 </p>
               )}
             </div>
