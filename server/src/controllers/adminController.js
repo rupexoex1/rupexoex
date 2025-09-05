@@ -78,92 +78,101 @@ export const getAdminStats = async (req, res) => {
  * Only allow: pending -> confirmed/failed (one-time)
  * On confirmed: deduct once (manual: credits-deduct; auto: forwarded-deduct)
  */
+// controllers/adminController.js
+
 export const updateOrderStatus = async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid order ID" });
+    return res.status(400).json({ success: false, message: "Invalid order ID" });
+  }
+  if (!["confirmed", "failed"].includes(status)) {
+    return res.status(400).json({ success: false, message: "Invalid status" });
   }
 
   try {
     const order = await Order.findById(id);
     if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      return res.status(404).json({ success: false, message: "Order not found" });
     }
-
     if (order.status !== "pending") {
       return res.status(400).json({
         success: false,
-        message: `Order has already been marked as '${order.status}' and cannot be updated again`,
+        message: `Order is already '${order.status}'`,
       });
     }
 
-    if (!["confirmed", "failed"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Only 'confirmed' or 'failed' are allowed",
-      });
-    }
-
-    const alreadyDeducted = await BalanceAdjustment.findOne({
-      orderId: order._id,
-      type: "deduct",
-    });
-
-    // compute available
-    let availableBalance = 0;
-    if (isManual) {
-      const adjustments = await BalanceAdjustment.find({ userId: order.user });
-      const totalCredits = adjustments
-        .filter((a) => a.type === "credit")
-        .reduce((s, a) => s + a.amount, 0);
-      const totalDebits = adjustments
-        .filter((a) => a.type === "deduct")
-        .reduce((s, a) => s + a.amount, 0);
-      availableBalance = totalCredits - totalDebits;
-    } else {
-      const [txs, debits] = await Promise.all([
-        Transaction.find({ userId: order.user, status: "forwarded" }),
-        BalanceAdjustment.find({ userId: order.user, type: "deduct" }),
-      ]);
-      const totalForwarded = txs.reduce((s, tx) => s + tx.amount, 0);
-      const totalDebits = debits.reduce((s, d) => s + d.amount, 0);
-      availableBalance = totalForwarded - totalDebits;
-    }
+    // --- Idempotency helpers ---
+    const findHold = async () =>
+      BalanceAdjustment.findOne({ orderId: order._id, type: "deduct" });
+    const findRefund = async () =>
+      BalanceAdjustment.findOne({ orderId: order._id, type: "credit", reason: `order_refund:${order._id}` });
 
     if (status === "confirmed") {
-      if (order.amount > availableBalance) {
-        return res.status(400).json({
-          success: false,
-          message: "Insufficient balance to confirm this order",
-        });
+      // 1) ensure user has enough balance right now
+      let available = 0;
+      if ((process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual") {
+        const adj = await BalanceAdjustment.find({ userId: order.user }).lean();
+        const cr = adj.filter(a => a.type === "credit").reduce((s,a)=>s+a.amount,0);
+        const dr = adj.filter(a => a.type === "deduct").reduce((s,a)=>s+a.amount,0);
+        available = cr - dr;
+      } else {
+        const [txs, debits] = await Promise.all([
+          Transaction.find({ userId: order.user, status: "forwarded" }).lean(),
+          BalanceAdjustment.find({ userId: order.user, type: "deduct" }).lean(),
+        ]);
+        const fwd = txs.reduce((s,t)=>s+t.amount,0);
+        const dr  = debits.reduce((s,d)=>s+d.amount,0);
+        available = fwd - dr;
+      }
+      if (order.amount > available) {
+        return res.status(400).json({ success: false, message: "Insufficient balance to confirm this order" });
       }
 
-      if (!alreadyDeducted) {
+      // 2) create deduct only if not already
+      const existingHold = await findHold();
+      if (!existingHold) {
         await new BalanceAdjustment({
           userId: order.user,
           amount: order.amount,
           type: "deduct",
-          reason: "Admin confirmed order",
+          reason: `order_debit:${order._id}`,
           orderId: order._id,
+          createdBy: req.user?._id,
         }).save();
       }
+
+      order.status = "confirmed";
+      order.completedAt = new Date();
+      await order.save();
+
+      return res.json({ success: true, message: "Order confirmed", order });
     }
 
-    order.status = status;
-    order.completedAt = new Date();
-    await order.save();
+    if (status === "failed") {
+      // If there was a prior hold/deduct for this order (e.g., if you ever add "hold at placement"),
+      // then refund it with a credit. If no hold exists, just mark failed.
+      const existingHold = await findHold();
+      const existingRefund = await findRefund();
 
-    return res.status(200).json({
-      success: true,
-      message: `Order marked as '${status}' successfully`,
-      order,
-    });
+      if (existingHold && !existingRefund) {
+        await new BalanceAdjustment({
+          userId: order.user,
+          amount: existingHold.amount,
+          type: "credit",
+          reason: `order_refund:${order._id}`,
+          orderId: order._id,
+          createdBy: req.user?._id,
+        }).save();
+      }
+
+      order.status = "failed";
+      order.completedAt = new Date();
+      await order.save();
+
+      return res.json({ success: true, message: "Order marked failed", order });
+    }
   } catch (err) {
     console.error("Order status update error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
