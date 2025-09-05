@@ -85,7 +85,9 @@ export const updateOrderStatus = async (req, res) => {
   const { status } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, message: "Invalid order ID" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid order ID" });
   }
   if (!["confirmed", "failed"].includes(status)) {
     return res.status(400).json({ success: false, message: "Invalid status" });
@@ -94,7 +96,9 @@ export const updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(id);
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
     if (order.status !== "pending") {
       return res.status(400).json({
@@ -103,46 +107,15 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // --- Idempotency helpers ---
-    const findHold = async () =>
-      BalanceAdjustment.findOne({ orderId: order._id, type: "deduct" });
-    const findRefund = async () =>
-      BalanceAdjustment.findOne({ orderId: order._id, type: "credit", reason: `order_refund:${order._id}` });
+    // helper lookups
+    const existingHold = await BalanceAdjustment.findOne({
+      orderId: order._id,
+      type: "deduct",
+      reason: { $regex: /^order_hold:/ },
+    }).lean();
 
     if (status === "confirmed") {
-      // 1) ensure user has enough balance right now
-      let available = 0;
-      if ((process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual") {
-        const adj = await BalanceAdjustment.find({ userId: order.user }).lean();
-        const cr = adj.filter(a => a.type === "credit").reduce((s,a)=>s+a.amount,0);
-        const dr = adj.filter(a => a.type === "deduct").reduce((s,a)=>s+a.amount,0);
-        available = cr - dr;
-      } else {
-        const [txs, debits] = await Promise.all([
-          Transaction.find({ userId: order.user, status: "forwarded" }).lean(),
-          BalanceAdjustment.find({ userId: order.user, type: "deduct" }).lean(),
-        ]);
-        const fwd = txs.reduce((s,t)=>s+t.amount,0);
-        const dr  = debits.reduce((s,d)=>s+d.amount,0);
-        available = fwd - dr;
-      }
-      if (order.amount > available) {
-        return res.status(400).json({ success: false, message: "Insufficient balance to confirm this order" });
-      }
-
-      // 2) create deduct only if not already
-      const existingHold = await findHold();
-      if (!existingHold) {
-        await new BalanceAdjustment({
-          userId: order.user,
-          amount: order.amount,
-          type: "deduct",
-          reason: `order_debit:${order._id}`,
-          orderId: order._id,
-          createdBy: req.user?._id,
-        }).save();
-      }
-
+      // DO NOT deduct again (already held on placement)
       order.status = "confirmed";
       order.completedAt = new Date();
       await order.save();
@@ -151,20 +124,24 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     if (status === "failed") {
-      // If there was a prior hold/deduct for this order (e.g., if you ever add "hold at placement"),
-      // then refund it with a credit. If no hold exists, just mark failed.
-      const existingHold = await findHold();
-      const existingRefund = await findRefund();
-
-      if (existingHold && !existingRefund) {
-        await new BalanceAdjustment({
-          userId: order.user,
-          amount: existingHold.amount,
+      // if a hold exists, refund it (idempotent)
+      if (existingHold) {
+        const alreadyRefunded = await BalanceAdjustment.findOne({
+          orderId: order._id,
           type: "credit",
           reason: `order_refund:${order._id}`,
-          orderId: order._id,
-          createdBy: req.user?._id,
-        }).save();
+        }).lean();
+
+        if (!alreadyRefunded) {
+          await new BalanceAdjustment({
+            userId: order.user,
+            amount: existingHold.amount,
+            type: "credit",
+            reason: `order_refund:${order._id}`,
+            orderId: order._id,
+            createdBy: req.user?._id,
+          }).save();
+        }
       }
 
       order.status = "failed";
@@ -226,7 +203,8 @@ export const adminUpdateWithdrawalStatus = async (req, res) => {
     }
 
     const wd = await Withdrawal.findById(id);
-    if (!wd) return res.status(404).json({ success: false, message: "Not found" });
+    if (!wd)
+      return res.status(404).json({ success: false, message: "Not found" });
     if (wd.status !== "pending") {
       return res
         .status(400)

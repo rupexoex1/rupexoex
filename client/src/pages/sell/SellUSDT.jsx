@@ -1,3 +1,4 @@
+// src/pages/Exchange/SellUSDT.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -11,7 +12,7 @@ const SellUSDT = () => {
   const planFromState = location.state?.plan;
   const {
     axios,
-    userBalance,
+    userBalance,              // virtual balance from backend
     selectedPlan,
     selectedBank,
     // dynamic rates
@@ -21,6 +22,8 @@ const SellUSDT = () => {
     basicMin,
     basicMax,
     vipMin,
+    // to refresh balance after placing order (hold deducted immediately on backend)
+    fetchUserBalance,
   } = useAppContext();
 
   // final plan to use
@@ -31,6 +34,10 @@ const SellUSDT = () => {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // NEW: processing hold (sum of user's pending orders)
+  const [processingHold, setProcessingHold] = useState(0);
+  const [holdLoading, setHoldLoading] = useState(true);
 
   // when plan or context prices change, recompute local price
   useEffect(() => {
@@ -44,12 +51,36 @@ const SellUSDT = () => {
     if (!plan) navigate("/");
   }, [plan, navigate]);
 
+  // fetch user's pending orders → processing hold
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await axios.get("/api/v1/users/orders");
+        const pendingSum = Array.isArray(res.data?.orders)
+          ? res.data.orders
+            .filter((o) => o.status === "pending")
+            .reduce((s, o) => s + Number(o.amount || 0), 0)
+          : 0;
+        setProcessingHold(pendingSum);
+      } catch (e) {
+        console.error("SellUSDT: fetch processing hold error:", e);
+        setProcessingHold(0);
+      } finally {
+        setHoldLoading(false);
+      }
+    })();
+  }, [axios]);
+
   // memoized INR amount
   const inrAmount = useMemo(() => {
     const num = parseFloat(amount);
     if (!price || !Number.isFinite(num)) return 0;
     return num * price;
   }, [amount, price]);
+
+  // 🔐 Available after holds (this is what user can actually sell)
+  const available = Number(userBalance || 0);
+  const availableAfterHold = Math.max(0, available - Number(processingHold || 0));
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
@@ -78,8 +109,9 @@ const SellUSDT = () => {
       }
     }
 
-    if (num > Number(userBalance)) {
-      setError("You cannot sell more than your available balance");
+    // ✅ Validate against availableAfterHold, NOT total balance
+    if (num > availableAfterHold) {
+      setError("You cannot sell more than your available balance (after holds)");
       return;
     }
   };
@@ -104,14 +136,22 @@ const SellUSDT = () => {
       });
 
       if (res.data?.success) {
-        toast.success("Order placed successfully");
+        toast.success("Order placed. Balance held.");
+        // refresh balance to reflect immediate hold/deduct
+        await fetchUserBalance?.();
         navigate(`/order-tracking/${res.data.order._id}`);
       } else {
         toast.error(res.data?.message || "Failed to place order");
       }
     } catch (err) {
       console.error(err);
-      toast.error(err?.response?.data?.message || "Server error");
+      const msg = err?.response?.data?.message || "Server error";
+      const details = err?.response?.data?.details;
+      if (details?.allowed !== undefined && details?.requested !== undefined) {
+        toast.error(`${msg}: allowed ${Number(details.allowed).toFixed(2)}, requested ${Number(details.requested).toFixed(2)}`);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -138,7 +178,7 @@ const SellUSDT = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M5.121 17.804A9.953 9.953 0 0112 15c2.21 0 4.253.713 5.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            d="M5.121 17.804A9.953 9.953 0 01112 15c2.21 0 4.253.713 5.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
           />
         </svg>
       </button>
@@ -181,13 +221,12 @@ const SellUSDT = () => {
 
         <div className="flex justify-between items-center text-sm mt-1">
           <span>
-            Available:{" "}
+            Available (after holds):{" "}
             <span
-              className={`${
-                Number(userBalance) < Number(basicMin) ? "text-red-400" : "text-green-400"
-              }`}
+              className={`${availableAfterHold < Number(basicMin) ? "text-red-400" : "text-green-400"
+                }`}
             >
-              {Number(userBalance).toFixed(2)} USDT
+              {holdLoading ? "…" : `${availableAfterHold.toFixed(2)} USDT`}
             </span>
           </span>
           {price && (
@@ -210,17 +249,21 @@ const SellUSDT = () => {
             {inrAmount ? `${inrAmount.toFixed(2)} ₹` : "0 ₹"}
           </span>
         </div>
+
+        {/* Optional helper to show current holds */}
+        <div className="text-[11px] text-slate-400">
+          Current holds (pending orders): {holdLoading ? "…" : Number(processingHold || 0).toFixed(2)} USDT
+        </div>
       </div>
 
       {/* Confirm */}
       <button
         onClick={handleConfirm}
         disabled={!!error || !amount || !price || !selectedBank}
-        className={`w-full max-w-md py-3 rounded font-semibold text-white ${
-          !!error || !amount || !price || !selectedBank
+        className={`w-full max-w-md py-3 rounded font-semibold text-white ${!!error || !amount || !price || !selectedBank
             ? "bg-gray-600 cursor-not-allowed"
             : "bg-blue-600 hover:bg-blue-700"
-        }`}
+          }`}
       >
         {loading ? "Placing Order..." : "Confirm"}
       </button>

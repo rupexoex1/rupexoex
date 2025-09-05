@@ -14,11 +14,11 @@ const isManual =
   (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
 
 // TOP me (imports ke baad) yeh helper add kar dein:
+// helpers
 const computeAvailableBalance = async (userId) => {
   const uid = new mongoose.Types.ObjectId(userId);
-
   if ((process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual") {
-    const adjustments = await BalanceAdjustment.find({ userId: uid });
+    const adjustments = await BalanceAdjustment.find({ userId: uid }).lean();
     const totalCredits = adjustments
       .filter((a) => a.type === "credit")
       .reduce((s, a) => s + a.amount, 0);
@@ -28,8 +28,8 @@ const computeAvailableBalance = async (userId) => {
     return totalCredits - totalDebits;
   } else {
     const [txs, adjustments] = await Promise.all([
-      Transaction.find({ userId: uid, status: "forwarded" }),
-      BalanceAdjustment.find({ userId: uid }),
+      Transaction.find({ userId: uid, status: "forwarded" }).lean(),
+      BalanceAdjustment.find({ userId: uid }).lean(),
     ]);
     const totalForwarded = txs.reduce((s, tx) => s + tx.amount, 0);
     const totalDebits = adjustments
@@ -37,6 +37,14 @@ const computeAvailableBalance = async (userId) => {
       .reduce((s, a) => s + a.amount, 0);
     return totalForwarded - totalDebits;
   }
+};
+
+const computePendingOrderHold = async (userId) => {
+  const uid = new mongoose.Types.ObjectId(userId);
+  const pending = await Order.find({ user: uid, status: "pending" })
+    .select("amount")
+    .lean();
+  return pending.reduce((s, o) => s + Number(o.amount || 0), 0);
 };
 
 // helpers (imports ke baad)
@@ -294,72 +302,166 @@ export const getSelectedBankAccount = async (req, res) => {
 };
 
 export const placeOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+  let createdOrder = null;
+
   try {
     const { amount, inrAmount, bankAccount, plan, price } = req.body;
-    if (!amount || !inrAmount || !bankAccount || !plan || !price) {
+    const userId = req.user._id;
+
+    const amt = Number(amount);
+    const inr = Number(inrAmount);
+    if (!amt || !inr || !bankAccount || !plan || !price) {
       return res
         .status(400)
         .json({ success: false, message: "Missing required fields" });
     }
+    if (amt <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amount" });
+    }
 
-    const userId = req.user._id;
-    let availableBalance = 0;
+    // transactional attempt
+    await session.withTransaction(async () => {
+      const [available, processingHold] = await Promise.all([
+        computeAvailableBalance(userId),
+        computePendingOrderHold(userId),
+      ]);
+      const withdrawable = Math.max(0, available - processingHold);
 
-    if (isManual) {
-      const adjustments = await BalanceAdjustment.find({ userId });
-      const totalCredits = adjustments
-        .filter((a) => a.type === "credit")
-        .reduce((s, a) => s + a.amount, 0);
-      const totalDebits = adjustments
-        .filter((a) => a.type === "deduct")
-        .reduce((s, a) => s + a.amount, 0);
-      availableBalance = totalCredits - totalDebits;
-    } else {
-      const transactions = await Transaction.find({
-        userId,
-        status: "forwarded",
-      });
-      const adjustments = await BalanceAdjustment.find({ userId });
-      const totalForwarded = transactions.reduce(
-        (sum, tx) => sum + tx.amount,
-        0
+      if (amt > withdrawable) {
+        throw new Error(`INSUFFICIENT__need:${amt}__allowed:${withdrawable}`);
+      }
+
+      // 1) create order (pending)
+      const [orderDoc] = await Order.create(
+        [
+          {
+            user: userId,
+            amount: amt,
+            inrAmount: inr,
+            bankAccount, // embedded object
+            plan,
+            price,
+            status: "pending",
+            completedAt: null,
+          },
+        ],
+        { session }
       );
-      const totalDebits = adjustments
-        .filter((a) => a.type === "deduct")
-        .reduce((s, a) => s + a.amount, 0);
-      availableBalance = totalForwarded - totalDebits;
-    }
 
-    if (availableBalance < amount) {
-      return res.status(400).json({
-        success: false,
-        message: "Insufficient balance to place order",
-      });
-    }
+      createdOrder = orderDoc;
 
-    // Create as pending; no deduction here
-    const order = await Order.create({
-      user: userId,
-      amount,
-      inrAmount,
-      bankAccount,
-      plan,
-      price,
-      status: "pending",
-      completedAt: null,
+      // 2) create HOLD as deduct so balance reflects instantly
+      await BalanceAdjustment.create(
+        [
+          {
+            userId,
+            amount: amt,
+            type: "deduct",
+            reason: `order_hold:${orderDoc._id}`,
+            orderId: orderDoc._id,
+            createdBy: userId,
+          },
+        ],
+        { session }
+      );
     });
 
     return res.status(201).json({
       success: true,
-      message: "Order placed. Awaiting admin confirmation.",
-      order,
+      message: "Order placed and balance held.",
+      order: createdOrder,
     });
   } catch (err) {
+    // Fallback if transactions unsupported (e.g. not a replica set)
+    const msg = String(err?.message || "");
+    const txUnsupported =
+      msg.includes("Transaction") ||
+      msg.includes("replica set") ||
+      msg.includes("not supported");
+
+    if (txUnsupported) {
+      try {
+        // Non-transactional fallback with manual rollback
+        const { amount, inrAmount, bankAccount, plan, price } = req.body;
+        const userId = req.user._id;
+        const amt = Number(amount);
+        const inr = Number(inrAmount);
+
+        const [available, processingHold] = await Promise.all([
+          computeAvailableBalance(userId),
+          computePendingOrderHold(userId),
+        ]);
+        const withdrawable = Math.max(0, available - processingHold);
+        if (amt > withdrawable) {
+          return res.status(400).json({
+            success: false,
+            message: "Insufficient balance after holds",
+            details: { allowed: withdrawable, requested: amt },
+          });
+        }
+
+        const order = await Order.create({
+          user: userId,
+          amount: amt,
+          inrAmount: inr,
+          bankAccount,
+          plan,
+          price,
+          status: "pending",
+          completedAt: null,
+        });
+
+        try {
+          await new BalanceAdjustment({
+            userId,
+            amount: amt,
+            type: "deduct",
+            reason: `order_hold:${order._id}`,
+            orderId: order._id,
+            createdBy: userId,
+          }).save();
+        } catch (holdErr) {
+          // rollback order if hold fails
+          await Order.findByIdAndDelete(order._id);
+          throw holdErr;
+        }
+
+        return res.status(201).json({
+          success: true,
+          message: "Order placed and balance held.",
+          order,
+        });
+      } catch (inner) {
+        console.error("placeOrder fallback error:", inner);
+        return res
+          .status(500)
+          .json({
+            success: false,
+            message: "Server error during order placement (fallback)",
+          });
+      }
+    }
+
+    if (msg.startsWith("INSUFFICIENT__")) {
+      const [, needPart, allowedPart] = msg.split("__");
+      const need = Number(needPart?.split(":")[1] || 0);
+      const allowed = Number(allowedPart?.split(":")[1] || 0);
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance after holds",
+        details: { allowed, requested: need },
+      });
+    }
+
     console.error("❌ Order placement error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error during order placement",
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error during order placement" });
+  } finally {
+    session.endSession();
   }
 };
 
@@ -540,12 +642,10 @@ export const createWithdrawal = async (req, res) => {
       // if hold fails, rollback the created withdrawal
       await Withdrawal.findByIdAndDelete(wd._id);
       console.error("withdrawal hold creation failed:", holdErr);
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to hold funds for withdrawal",
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to hold funds for withdrawal",
+      });
     }
 
     return res.json({ success: true, withdrawal: wd });
