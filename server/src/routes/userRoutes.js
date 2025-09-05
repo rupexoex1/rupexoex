@@ -34,10 +34,11 @@ import {
   updateSettings,
   adminAdjustUserBalance,
 
-  // 💸 withdrawals (NEW)
-  createWithdrawal,      // POST /withdrawals (user)
-  getMyWithdrawals,      // GET  /withdrawals (user)  [optional UI]
-} from "../controllers/userController.js";
+  // 💸 withdrawals (USER)
+  createWithdrawal,      // POST /withdrawals
+  getMyWithdrawals,      // GET  /withdrawals (list mine)
+  getWithdrawalById,     // NEW: GET  /withdrawals/:id (tracking)
+} from "../controllers/userController.js"; // <-- ensure getWithdrawalById is exported there
 
 import {
   getAdminStats,
@@ -45,7 +46,7 @@ import {
   updateOrderStatus,
   getAllOrders,
 
-  // 💸 withdrawals admin (NEW)
+  // 💸 withdrawals admin
   adminListWithdrawals,          // GET /admin/withdrawals
   adminUpdateWithdrawalStatus,   // PUT /admin/withdrawals/:id
 } from "../controllers/adminController.js";
@@ -171,7 +172,7 @@ userRoutes.get(
   getAllOrders
 );
 
-/* ========== 💸 Withdrawals (ADMIN) — NEW ========== */
+/* ========== 💸 Withdrawals (ADMIN) ========== */
 userRoutes.get(
   "/admin/withdrawals",
   verifyToken,
@@ -223,11 +224,14 @@ userRoutes.post("/orders", verifyToken, placeOrder);
 userRoutes.get("/orders", verifyToken, getUserOrders);
 userRoutes.get("/orders/:id", verifyToken, getOrderById);
 
-/* ========== 💸 Withdrawals (USER) — NEW ========== */
+/* ========== 💸 Withdrawals (USER) ========== */
+// NEW: Single withdrawal for tracking page
+userRoutes.get("/withdrawals/:id", verifyToken, getWithdrawalById); // NEW
+
 // Create a withdrawal request
 userRoutes.post("/withdrawals", verifyToken, createWithdrawal);
 
-// (Optional) List my own withdrawal requests for a "My Withdrawals" page
+// My withdrawals list (optional page)
 userRoutes.get("/withdrawals", verifyToken, getMyWithdrawals);
 
 /* =========================
