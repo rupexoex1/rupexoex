@@ -10,7 +10,8 @@ import Setting from "../models/settingModel.js";
 import Withdrawal from "../models/withdrawalModel.js";
 
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-const isManual = (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
+const isManual =
+  (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
 
 /* =========================
    Helpers (ONE place only)
@@ -19,8 +20,12 @@ const computeAvailableBalance = async (userId) => {
   const uid = new mongoose.Types.ObjectId(userId);
   if (isManual) {
     const adjustments = await BalanceAdjustment.find({ userId: uid }).lean();
-    const totalCredits = adjustments.filter(a => a.type === "credit").reduce((s, a) => s + a.amount, 0);
-    const totalDebits  = adjustments.filter(a => a.type === "deduct").reduce((s, a) => s + a.amount, 0);
+    const totalCredits = adjustments
+      .filter((a) => a.type === "credit")
+      .reduce((s, a) => s + a.amount, 0);
+    const totalDebits = adjustments
+      .filter((a) => a.type === "deduct")
+      .reduce((s, a) => s + a.amount, 0);
     return totalCredits - totalDebits;
   } else {
     const [txs, adjustments] = await Promise.all([
@@ -28,7 +33,9 @@ const computeAvailableBalance = async (userId) => {
       BalanceAdjustment.find({ userId: uid }).lean(),
     ]);
     const totalForwarded = txs.reduce((s, tx) => s + tx.amount, 0);
-    const totalDebits    = adjustments.filter(a => a.type === "deduct").reduce((s, a) => s + a.amount, 0);
+    const totalDebits = adjustments
+      .filter((a) => a.type === "deduct")
+      .reduce((s, a) => s + a.amount, 0);
     return totalForwarded - totalDebits;
   }
 };
@@ -36,7 +43,9 @@ const computeAvailableBalance = async (userId) => {
 // Optional (info-only; not used in checks now)
 const computePendingOrderHold = async (userId) => {
   const uid = new mongoose.Types.ObjectId(userId);
-  const pending = await Order.find({ user: uid, status: "pending" }).select("amount").lean();
+  const pending = await Order.find({ user: uid, status: "pending" })
+    .select("amount")
+    .lean();
   return pending.reduce((s, o) => s + Number(o.amount || 0), 0);
 };
 
@@ -44,9 +53,11 @@ const computePendingOrderHold = async (userId) => {
    Admin / Manager / User pings
 ========================= */
 export const adminLogin = (req, res) => res.json({ message: "Welcome Admin" });
-export const managerLogin = (req, res) => res.json({ message: "Welcome Manager" });
-export const userLogin   = (req, res) => res.json({ message: "Welcome User" });
-export const publicInfo  = (req, res) => res.json({ message: "Welcome UNKNOWN" });
+export const managerLogin = (req, res) =>
+  res.json({ message: "Welcome Manager" });
+export const userLogin = (req, res) => res.json({ message: "Welcome User" });
+export const publicInfo = (req, res) =>
+  res.json({ message: "Welcome UNKNOWN" });
 
 /* =========================
    Deposit check (TRON)
@@ -59,7 +70,8 @@ export const checkUSDTDeposit = async (req, res) => {
       success: true,
       mode: "manual",
       message: "Auto-forward disabled. Deposit to master wallet only.",
-      masterWalletAddress: setting.masterWalletAddress || process.env.MASTER_WALLET_ADDRESS,
+      masterWalletAddress:
+        setting.masterWalletAddress || process.env.MASTER_WALLET_ADDRESS,
     });
   }
 
@@ -68,7 +80,9 @@ export const checkUSDTDeposit = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user || !user.tronWallet?.address || !user.tronWallet?.privateKey) {
-      return res.status(404).json({ success: false, message: "Wallet not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Wallet not found" });
     }
 
     const FULL_HOST = process.env.TRON_FULL_HOST || "https://api.trongrid.io";
@@ -92,13 +106,17 @@ export const checkUSDTDeposit = async (req, res) => {
     );
 
     if (usdtDeposits.length === 0) {
-      return res.status(200).json({ success: true, message: "No USDT deposit found." });
+      return res
+        .status(200)
+        .json({ success: true, message: "No USDT deposit found." });
     }
 
     const latest = usdtDeposits[0];
 
     // skip if already processed
-    const already = await Transaction.findOne({ txHash: latest.transaction_id });
+    const already = await Transaction.findOne({
+      txHash: latest.transaction_id,
+    });
     if (already) {
       return res.status(200).json({
         success: true,
@@ -161,11 +179,17 @@ export const checkUSDTDeposit = async (req, res) => {
 export const getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
-    const transactions = await Transaction.find({ userId }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: transactions.length, transactions });
+    const transactions = await Transaction.find({ userId }).sort({
+      createdAt: -1,
+    });
+    res
+      .status(200)
+      .json({ success: true, count: transactions.length, transactions });
   } catch (error) {
     console.error("Fetch transaction history error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to fetch transaction history" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch transaction history" });
   }
 };
 
@@ -173,7 +197,9 @@ export const getVirtualBalance = async (req, res) => {
   try {
     const userId = req.user.id;
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ success: false, message: "Invalid user ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID" });
     }
 
     // same logic as computeAvailableBalance
@@ -181,7 +207,9 @@ export const getVirtualBalance = async (req, res) => {
     res.status(200).json({ success: true, balance: availableBalance });
   } catch (err) {
     console.error("❌ Balance fetch error:", err);
-    res.status(500).json({ success: false, message: "Failed to fetch balance" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch balance" });
   }
 };
 
@@ -203,7 +231,9 @@ export const addBankAccount = async (req, res) => {
 };
 
 export const getBankAccounts = async (req, res) => {
-  const accounts = await BankAccount.find({ userId: req.user._id }).sort({ createdAt: -1 });
+  const accounts = await BankAccount.find({ userId: req.user._id }).sort({
+    createdAt: -1,
+  });
   res.json({ success: true, accounts });
 };
 
@@ -224,8 +254,14 @@ export const selectBankAccount = async (req, res) => {
 };
 
 export const getSelectedBankAccount = async (req, res) => {
-  const selected = await BankAccount.findOne({ userId: req.user._id, isSelected: true });
-  if (!selected) return res.status(404).json({ success: false, message: "No selected payee found" });
+  const selected = await BankAccount.findOne({
+    userId: req.user._id,
+    isSelected: true,
+  });
+  if (!selected)
+    return res
+      .status(404)
+      .json({ success: false, message: "No selected payee found" });
   res.json({ success: true, account: selected });
 };
 
@@ -243,10 +279,14 @@ export const placeOrder = async (req, res) => {
     const amt = Number(amount);
     const inr = Number(inrAmount);
     if (!amt || !inr || !bankAccount || !plan || !price) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing required fields" });
     }
     if (amt <= 0) {
-      return res.status(400).json({ success: false, message: "Invalid amount" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amount" });
     }
 
     await session.withTransaction(async () => {
@@ -256,28 +296,38 @@ export const placeOrder = async (req, res) => {
       }
 
       // 1) create order (pending)
-      const [orderDoc] = await Order.create([{
-        user: userId,
-        amount: amt,
-        inrAmount: inr,
-        bankAccount, // embedded
-        plan,
-        price,
-        status: "pending",
-        completedAt: null,
-      }], { session });
+      const [orderDoc] = await Order.create(
+        [
+          {
+            user: userId,
+            amount: amt,
+            inrAmount: inr,
+            bankAccount, // embedded
+            plan,
+            price,
+            status: "pending",
+            completedAt: null,
+          },
+        ],
+        { session }
+      );
 
       createdOrder = orderDoc;
 
       // 2) HOLD as deduct (instant effect on balance)
-      await BalanceAdjustment.create([{
-        userId,
-        amount: amt,
-        type: "deduct",
-        reason: `order_hold:${orderDoc._id}`,
-        orderId: orderDoc._id,
-        createdBy: userId,
-      }], { session });
+      await BalanceAdjustment.create(
+        [
+          {
+            userId,
+            amount: amt,
+            type: "deduct",
+            reason: `order_hold:${orderDoc._id}`,
+            orderId: orderDoc._id,
+            createdBy: userId,
+          },
+        ],
+        { session }
+      );
     });
 
     return res.status(201).json({
@@ -287,7 +337,10 @@ export const placeOrder = async (req, res) => {
     });
   } catch (err) {
     const msg = String(err?.message || "");
-    const txUnsupported = msg.includes("Transaction") || msg.includes("replica set") || msg.includes("not supported");
+    const txUnsupported =
+      msg.includes("Transaction") ||
+      msg.includes("replica set") ||
+      msg.includes("not supported");
 
     if (txUnsupported) {
       try {
@@ -338,7 +391,12 @@ export const placeOrder = async (req, res) => {
         });
       } catch (inner) {
         console.error("placeOrder fallback error:", inner);
-        return res.status(500).json({ success: false, message: "Server error during order placement (fallback)" });
+        return res
+          .status(500)
+          .json({
+            success: false,
+            message: "Server error during order placement (fallback)",
+          });
       }
     }
 
@@ -354,7 +412,9 @@ export const placeOrder = async (req, res) => {
     }
 
     console.error("❌ Order placement error:", err);
-    return res.status(500).json({ success: false, message: "Server error during order placement" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error during order placement" });
   } finally {
     session.endSession();
   }
@@ -365,7 +425,9 @@ export const placeOrder = async (req, res) => {
 ========================= */
 export const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: req.user._id }).sort({
+      createdAt: -1,
+    });
     res.json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
@@ -375,7 +437,10 @@ export const getUserOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+    if (!order)
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     res.json({ success: true, order });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to fetch order" });
@@ -391,11 +456,14 @@ export const getSettings = async (req, res) => {
     if (!setting) setting = await Setting.create({});
     res.json({
       success: true,
-      masterWalletAddress: setting.masterWalletAddress || process.env.MASTER_WALLET_ADDRESS || "",
+      masterWalletAddress:
+        setting.masterWalletAddress || process.env.MASTER_WALLET_ADDRESS || "",
       depositMode: process.env.DEPOSIT_MODE || "manual",
     });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to fetch settings" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch settings" });
   }
 };
 
@@ -403,16 +471,24 @@ export const updateSettings = async (req, res) => {
   try {
     const { masterWalletAddress } = req.body;
     if (!masterWalletAddress) {
-      return res.status(400).json({ success: false, message: "masterWalletAddress is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "masterWalletAddress is required" });
     }
     let setting = await Setting.findOne();
     if (!setting) setting = new Setting({});
     setting.masterWalletAddress = masterWalletAddress.trim();
     setting.updatedBy = req.user._id;
     await setting.save();
-    res.json({ success: true, message: "Settings updated", masterWalletAddress: setting.masterWalletAddress });
+    res.json({
+      success: true,
+      message: "Settings updated",
+      masterWalletAddress: setting.masterWalletAddress,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Failed to update settings" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update settings" });
   }
 };
 
@@ -425,11 +501,19 @@ export const adminAdjustUserBalance = async (req, res) => {
     const { amount, type, reason } = req.body;
 
     if (!amount || !type || !["credit", "deduct"].includes(type)) {
-      return res.status(400).json({ success: false, message: "amount and valid type (credit|deduct) required" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "amount and valid type (credit|deduct) required",
+        });
     }
 
     const user = await User.findById(id);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     await new BalanceAdjustment({
       userId: id,
@@ -442,7 +526,9 @@ export const adminAdjustUserBalance = async (req, res) => {
     return res.json({ success: true, message: `Balance ${type}ed` });
   } catch (err) {
     console.error("adminAdjustUserBalance error:", err);
-    res.status(500).json({ success: false, message: "Failed to adjust balance" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to adjust balance" });
   }
 };
 
@@ -457,8 +543,14 @@ export const createWithdrawal = async (req, res) => {
     const { address, amount, network = "TRC20" } = req.body;
 
     const amt = Number(amount);
-    if (!address) return res.status(400).json({ success: false, message: "Address is required" });
-    if (!amt || amt <= 0) return res.status(400).json({ success: false, message: "Invalid amount" });
+    if (!address)
+      return res
+        .status(400)
+        .json({ success: false, message: "Address is required" });
+    if (!amt || amt <= 0)
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid amount" });
 
     const feeUSD = 7; // keep in sync with frontend
     const availableBalance = await computeAvailableBalance(userId);
@@ -484,26 +576,36 @@ export const createWithdrawal = async (req, res) => {
     let wdDoc;
     await session.withTransaction(async () => {
       // 1) create withdrawal row
-      const [wd] = await Withdrawal.create([{
-        user: userId,
-        address,
-        network,
-        amount: amt,
-        feeUSD,
-        status: "pending",
-      }], { session });
+      const [wd] = await Withdrawal.create(
+        [
+          {
+            user: userId,
+            address,
+            network,
+            amount: amt,
+            feeUSD,
+            status: "pending",
+          },
+        ],
+        { session }
+      );
 
       wdDoc = wd;
 
       // 2) hold (amount + fee)
-      await BalanceAdjustment.create([{
-        userId,
-        amount: amt + feeUSD,
-        type: "deduct",
-        reason: `withdrawal_hold:${wd._id}`,
-        orderId: null,
-        createdBy: userId,
-      }], { session });
+      await BalanceAdjustment.create(
+        [
+          {
+            userId,
+            amount: amt + feeUSD,
+            type: "deduct",
+            reason: `withdrawal_hold:${wd._id}`,
+            orderId: null,
+            createdBy: userId,
+          },
+        ],
+        { session }
+      );
     });
 
     return res.json({ success: true, withdrawal: wdDoc });
@@ -519,10 +621,34 @@ export const createWithdrawal = async (req, res) => {
 export const getMyWithdrawals = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
-    const rows = await Withdrawal.find({ user: userId }).sort({ createdAt: -1 });
+    const rows = await Withdrawal.find({ user: userId }).sort({
+      createdAt: -1,
+    });
     return res.json({ success: true, withdrawals: rows });
   } catch (err) {
     console.error("getMyWithdrawals error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Add this in userController.js (anywhere below the imports)
+export const getWithdrawalById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid id" });
+    }
+
+    // restrict to the logged-in user's own withdrawal
+    const row = await Withdrawal.findOne({ _id: id, user: req.user._id });
+    if (!row) {
+      return res.status(404).json({ success: false, message: "Not found" });
+    }
+
+    return res.json({ success: true, withdrawal: row });
+  } catch (err) {
+    console.error("getWithdrawalById error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
