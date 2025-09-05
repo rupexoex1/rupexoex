@@ -22,7 +22,7 @@ const Profile = () => {
   const [processingBalance, setProcessingBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // fetch available (context) + pending orders -> processing
+  // fetch available (context) + pending orders -> processing (info-only)
   useEffect(() => {
     if (!isLoggedIn) return;
     (async () => {
@@ -45,11 +45,10 @@ const Profile = () => {
   }, [isLoggedIn, axios, fetchUserBalance]);
 
   // balances
-  const available = Number(userBalance || 0);
-  const availableAfterHold = Math.max(0, available - Number(processingBalance || 0)); // show holds deducted
+  const available = Number(userBalance || 0); // NET available from backend
   const total = useMemo(
-    () => availableAfterHold + Number(processingBalance || 0),
-    [availableAfterHold, processingBalance]
+    () => available + Number(processingBalance || 0), // gross = available + processing
+    [available, processingBalance]
   );
 
   const handleBack = () => {
@@ -119,10 +118,7 @@ const Profile = () => {
             value={
               loading
                 ? "…"
-                : new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(total)
+                : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(total)
             }
           />
 
@@ -131,10 +127,7 @@ const Profile = () => {
             value={
               loading
                 ? "…"
-                : new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(availableAfterHold)
+                : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(available)
             }
           />
 
@@ -143,10 +136,7 @@ const Profile = () => {
             value={
               loading
                 ? "…"
-                : new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(Number(processingBalance))
+                : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(processingBalance))
             }
           />
         </div>
