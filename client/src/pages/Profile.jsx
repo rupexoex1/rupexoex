@@ -22,7 +22,7 @@ const Profile = () => {
   const [processingBalance, setProcessingBalance] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // fetch available (context) + pending orders -> processing (info-only)
+  // fetch available (context) + pending orders -> processing
   useEffect(() => {
     if (!isLoggedIn) return;
     (async () => {
@@ -45,10 +45,11 @@ const Profile = () => {
   }, [isLoggedIn, axios, fetchUserBalance]);
 
   // balances
-  const available = Number(userBalance || 0); // NET available from backend
+  const available = Number(userBalance || 0);
+  const availableAfterHold = Math.max(0, available - Number(processingBalance || 0)); // show holds deducted
   const total = useMemo(
-    () => available + Number(processingBalance || 0), // gross = available + processing
-    [available, processingBalance]
+    () => availableAfterHold + Number(processingBalance || 0),
+    [availableAfterHold, processingBalance]
   );
 
   const handleBack = () => {
@@ -118,7 +119,10 @@ const Profile = () => {
             value={
               loading
                 ? "…"
-                : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(total)
+                : new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(total)
             }
           />
 
@@ -127,7 +131,10 @@ const Profile = () => {
             value={
               loading
                 ? "…"
-                : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(available)
+                : new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(availableAfterHold)
             }
           />
 
@@ -136,7 +143,10 @@ const Profile = () => {
             value={
               loading
                 ? "…"
-                : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(processingBalance))
+                : new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(Number(processingBalance))
             }
           />
         </div>
@@ -145,9 +155,11 @@ const Profile = () => {
         <div className="mt-6 space-y-3">
           <ActionItem iconSrc={assets.exchange_tab} label="Exchange History" link="/orders" />
           <ActionItem iconSrc={assets.recent_transaction} label="Recent USDT Transactions" link="/user-transactions" />
+          {/* NEW: My Withdrawals list */}
+          <ActionItem iconSrc={assets.exchange_tab} label="My Withdrawals" link="/withdrawals" />
           <ActionItem iconSrc={assets.bank_account} label="Bank Accounts" link="/select-payee" />
           <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" />
-          <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" link="/withdraw" />
+          <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" />
         </div>
 
         {/* Signout */}
