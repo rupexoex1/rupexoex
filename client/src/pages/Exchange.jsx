@@ -127,17 +127,17 @@ const Exchange = () => {
           <StatTile
             label="Total"
             value={total}
-            icon={<Wallet2 size={10} className="text-slate-300" />}
+            // icon={<Wallet2 size={16} className="text-slate-300" />}
           />
           <StatTile
             label="Available"
             value={availableAfterHold}
-            icon={<ShieldCheck size={10} className="text-emerald-300" />}
+            // icon={<ShieldCheck size={16} className="text-emerald-300" />}
           />
           <StatTile
             label="Processing"
             value={processingHold}
-            icon={<Info size={10} className="text-amber-300" />}
+            // icon={<Info size={16} className="text-amber-300" />}
           />
         </div>
 
