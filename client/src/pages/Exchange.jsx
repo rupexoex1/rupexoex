@@ -28,12 +28,11 @@ const Exchange = () => {
     vipMin,
   } = useAppContext();
 
-  // local: processing hold (sum of all pending orders)
+  // local: processing hold (sum of all pending orders + pending withdrawals(+fee))
   const [processingHold, setProcessingHold] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // fetch balance + pending orders
-  // inside useEffect that fetches holds
+  // fetch balance + pending holds
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -49,17 +48,17 @@ const Exchange = () => {
 
         const orderHold = Array.isArray(ordRes.data?.orders)
           ? ordRes.data.orders
-            .filter((o) => o.status === "pending")
-            .reduce((sum, o) => sum + Number(o.amount || 0), 0)
+              .filter((o) => o.status === "pending")
+              .reduce((sum, o) => sum + Number(o.amount || 0), 0)
           : 0;
 
         const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
           ? wdRes.data.withdrawals
-            .filter((w) => w.status === "pending")
-            .reduce(
-              (sum, w) => sum + Number(w.amount || 0) + Number(w.feeUSD ?? 7),
-              0
-            )
+              .filter((w) => w.status === "pending")
+              .reduce(
+                (sum, w) => sum + Number(w.amount || 0) + Number(w.feeUSD ?? 7),
+                0
+              )
           : 0;
 
         setProcessingHold(orderHold + withdrawHold);
@@ -70,7 +69,6 @@ const Exchange = () => {
       }
     })();
   }, [token, axios, fetchUserBalance]);
-
 
   // ✅ Correct math (same as Profile)
   const available = useMemo(() => Number(userBalance || 0), [userBalance]); // net after holds
@@ -94,14 +92,12 @@ const Exchange = () => {
 
   const StatTile = ({ label, value, icon }) => {
     const full = loading ? "…" : formatUSD(value);
-    const show =
-      loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
-
+    const show = loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
     return (
       <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3 flex items-center gap-3">
         <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700">{icon}</div>
         <div className="flex-1">
-          <div className="text-xs text-slate-400">{label}</div>
+          <div className="text-[11px] text-slate-400 leading-tight">{label}</div>
           <div className="text-xs font-semibold truncate" title={loading ? "" : full}>
             {show}
           </div>
@@ -155,7 +151,7 @@ const Exchange = () => {
             value={available}
             icon={<ShieldCheck size={16} className="text-emerald-300" />}
           />
-          <StatTile
+        <StatTile
             label="Processing"
             value={processing}
             icon={<Info size={16} className="text-amber-300" />}
@@ -179,10 +175,11 @@ const Exchange = () => {
             <button
               onClick={goSell}
               disabled={!selectedPlan}
-              className={`w-full py-2.5 rounded-lg font-semibold ${selectedPlan
+              className={`w-full py-2.5 rounded-lg font-semibold ${
+                selectedPlan
                   ? "bg-blue-600 hover:bg-blue-700"
                   : "bg-slate-700 cursor-not-allowed"
-                }`}
+              }`}
             >
               {selectedPlan ? `Continue with ${selectedPlan}` : "Select a plan to continue"}
             </button>
