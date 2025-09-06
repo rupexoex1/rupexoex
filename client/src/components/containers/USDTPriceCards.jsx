@@ -69,7 +69,7 @@ const USDTPriceCards = () => {
           <button
             onClick={handleDepositClick}
             className={`w-[50%] text-white py-2 rounded font-semibold mt-2 transition-all duration-200 ${
-              selectedPlan ? "bg-[#30B0C7]" : "bg-red-800 cursor-not-allowed"
+              selectedPlan ? "bg-[#30B0C7]" : "bg-red-800 cursor-pointer"
             }`}
           >
             Deposit
