@@ -1,3 +1,4 @@
+// src/pages/Profile.jsx
 import { NavLink, useNavigate } from "react-router-dom";
 import Signout from "../components/admin/Signout";
 import coins from "../assets/static/coins.png";
@@ -8,12 +9,10 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 
-// helper: USD format with compact fallback for long values
-const formatUSD = (n, { compact = false } = {}) => {
-  const opts = { style: "currency", currency: "USD", maximumFractionDigits: 2 };
-  if (compact) opts.notation = "compact";
-  return new Intl.NumberFormat("en-US", opts).format(Number(n || 0));
-};
+const USD = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+    Number(n || 0)
+  );
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -25,24 +24,38 @@ const Profile = () => {
   // from context
   const { axios, userBalance, fetchUserBalance } = useAppContext();
 
-  // local: processing & loading
-  const [processingBalance, setProcessingBalance] = useState(0);
+  // local
+  const [processingHold, setProcessingHold] = useState(0); // orders + withdrawals
   const [loading, setLoading] = useState(true);
 
-  // fetch available (context) + pending orders -> processing
+  // fetch balance + pending holds (orders + withdrawals)
   useEffect(() => {
     if (!isLoggedIn) return;
     (async () => {
       try {
-        await fetchUserBalance(); // sets userBalance in context
+        await fetchUserBalance(); // userBalance = NET (after holds)
 
-        const res = await axios.get("/api/v1/users/orders");
-        if (res.data?.success && Array.isArray(res.data.orders)) {
-          const pendingSum = res.data.orders
-            .filter((o) => o.status === "pending")
-            .reduce((sum, o) => sum + Number(o.amount || 0), 0);
-          setProcessingBalance(pendingSum);
-        }
+        const [ordRes, wdRes] = await Promise.all([
+          axios.get("/api/v1/users/orders"),
+          axios.get("/api/v1/users/withdrawals"),
+        ]);
+
+        const orderHold = Array.isArray(ordRes.data?.orders)
+          ? ordRes.data.orders
+              .filter((o) => o.status === "pending")
+              .reduce((sum, o) => sum + Number(o.amount || 0), 0)
+          : 0;
+
+        const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
+          ? wdRes.data.withdrawals
+              .filter((w) => w.status === "pending")
+              .reduce(
+                (sum, w) => sum + Number(w.amount || 0) + Number(w.feeUSD ?? 7),
+                0
+              )
+          : 0;
+
+        setProcessingHold(orderHold + withdrawHold);
       } catch (e) {
         console.error("Profile fetch error:", e);
       } finally {
@@ -51,10 +64,13 @@ const Profile = () => {
     })();
   }, [isLoggedIn, axios, fetchUserBalance]);
 
-  // balances
-  const available = Number(userBalance || 0); // 🔹 net after holds (HOLD already deducted)
-  const processing = Number(processingBalance || 0);
-  const total = useMemo(() => available + processing, [available, processing]); // 🔹 original pre-hold view
+  // ✅ Correct math:
+  // Available = userBalance (already after holds)
+  // Processing = pending orders + pending withdrawals(+fee)
+  // Total = Available + Processing
+  const available = Number(userBalance || 0);
+  const processing = Number(processingHold || 0);
+  const total = useMemo(() => available + processing, [available, processing]);
 
   const handleBack = () => {
     if (window.history.length > 2) navigate(-1);
@@ -69,13 +85,20 @@ const Profile = () => {
           Welcome to Rupexo
         </h2>
         <p className="rich-text text-xs mb-10 text-center">
-          Welcome to the world's largest cryptocurrency marketplace. Sign up to explore more about cryptos.
+          Welcome to the world's largest cryptocurrency marketplace. Sign up to
+          explore more about cryptos.
         </p>
         <div className="space-x-2">
-          <NavLink to="/register" className="font-light px-6 py-2 rounded-sm bg-[#7928ff] text-white hover:bg-[#6a1de1]">
+          <NavLink
+            to="/register"
+            className="font-light px-6 py-2 rounded-sm bg-[#7928ff] text-white hover:bg-[#6a1de1]"
+          >
             Register
           </NavLink>
-          <NavLink to="/login" className="font-light px-6 py-2 rounded-sm bg-[#7928ff] text-white hover:bg-[#6a1de1]">
+          <NavLink
+            to="/login"
+            className="font-light px-6 py-2 rounded-sm bg-[#7928ff] text-white hover:bg-[#6a1de1]"
+          >
             Login
           </NavLink>
         </div>
@@ -121,30 +144,53 @@ const Profile = () => {
           <BalanceBox
             label="Total"
             loading={loading}
-            amount={total}
+            value={total}
           />
           <BalanceBox
             label="Available"
             loading={loading}
-            amount={available}
+            value={available}
           />
           <BalanceBox
             label="Processing"
             loading={loading}
-            amount={processing}
+            value={processing}
           />
         </div>
 
         {/* Action List */}
         <div className="mt-6 space-y-3">
-          <ActionItem iconSrc={assets.exchange_tab} label="Exchange History" link="/orders" />
-          <ActionItem iconSrc={assets.recent_transaction} label="Recent USDT Transactions" link="/user-transactions" />
-          {/* My Withdrawals list */}
-          <ActionItem iconSrc={assets.exchange_tab} label="My Withdrawals" link="/withdrawals" />
-          <ActionItem iconSrc={assets.bank_account} label="Bank Accounts" link="/select-payee" />
-          <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" />
+          <ActionItem
+            iconSrc={assets.exchange_tab}
+            label="Exchange History"
+            link="/orders"
+          />
+          <ActionItem
+            iconSrc={assets.recent_transaction}
+            label="Recent USDT Transactions"
+            link="/user-transactions"
+          />
+          {/* Withdrawals list */}
+          <ActionItem
+            iconSrc={assets.exchange_tab}
+            label="My Withdrawals"
+            link="/withdrawals"
+          />
+          <ActionItem
+            iconSrc={assets.bank_account}
+            label="Bank Accounts"
+            link="/select-payee"
+          />
+          <ActionItem
+            iconSrc={assets.reset_transaction}
+            label="Reset transaction password"
+          />
           {/* Withdraw page */}
-          <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" link="/withdraw" />
+          <ActionItem
+            iconSrc={assets.withdraw}
+            label="Withdraw USDT"
+            link="/withdraw"
+          />
         </div>
 
         {/* Signout */}
@@ -156,22 +202,29 @@ const Profile = () => {
   );
 };
 
-// Balance card box (overflow-safe)
-const BalanceBox = ({ label, amount = 0, loading = false }) => {
-  const full = loading ? "…" : formatUSD(amount);
-  const show = loading ? "…" : (full.length > 14 ? formatUSD(amount, { compact: true }) : full);
+const BalanceBox = ({ label, value, loading }) => {
+  const full = loading ? "…" : USD(value);
+  const show = loading
+    ? "…"
+    : full.length > 14
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        notation: "compact",
+        maximumFractionDigits: 2,
+      }).format(Number(value || 0))
+    : full;
 
   return (
     <div className="bg-[#1E293B] p-3 rounded">
       <p className="text-gray-400 text-xs">{label}</p>
-      <p className="text-sm font-bold truncate" title={loading ? "" : full}>
+      <p className="text-xs font-bold truncate" title={full}>
         {show}
       </p>
     </div>
   );
 };
 
-// Action list row
 const ActionItem = ({ iconSrc, label, link }) => (
   <NavLink
     to={link || "#"}

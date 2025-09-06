@@ -33,6 +33,7 @@ const Exchange = () => {
   const [loading, setLoading] = useState(true);
 
   // fetch balance + pending orders
+  // inside useEffect that fetches holds
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -41,13 +42,27 @@ const Exchange = () => {
     (async () => {
       try {
         await fetchUserBalance();
-        const res = await axios.get("/api/v1/users/orders");
-        const pending = Array.isArray(res.data?.orders)
-          ? res.data.orders
-              .filter((o) => o.status === "pending")
-              .reduce((sum, o) => sum + Number(o.amount || 0), 0)
+        const [ordRes, wdRes] = await Promise.all([
+          axios.get("/api/v1/users/orders"),
+          axios.get("/api/v1/users/withdrawals"),
+        ]);
+
+        const orderHold = Array.isArray(ordRes.data?.orders)
+          ? ordRes.data.orders
+            .filter((o) => o.status === "pending")
+            .reduce((sum, o) => sum + Number(o.amount || 0), 0)
           : 0;
-        setProcessingHold(pending);
+
+        const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
+          ? wdRes.data.withdrawals
+            .filter((w) => w.status === "pending")
+            .reduce(
+              (sum, w) => sum + Number(w.amount || 0) + Number(w.feeUSD ?? 7),
+              0
+            )
+          : 0;
+
+        setProcessingHold(orderHold + withdrawHold);
       } catch (e) {
         console.error("Exchange: fetch error", e);
       } finally {
@@ -55,6 +70,7 @@ const Exchange = () => {
       }
     })();
   }, [token, axios, fetchUserBalance]);
+
 
   // ✅ Correct math (same as Profile)
   const available = useMemo(() => Number(userBalance || 0), [userBalance]); // net after holds
@@ -163,11 +179,10 @@ const Exchange = () => {
             <button
               onClick={goSell}
               disabled={!selectedPlan}
-              className={`w-full py-2.5 rounded-lg font-semibold ${
-                selectedPlan
+              className={`w-full py-2.5 rounded-lg font-semibold ${selectedPlan
                   ? "bg-blue-600 hover:bg-blue-700"
                   : "bg-slate-700 cursor-not-allowed"
-              }`}
+                }`}
             >
               {selectedPlan ? `Continue with ${selectedPlan}` : "Select a plan to continue"}
             </button>
