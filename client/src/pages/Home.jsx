@@ -77,7 +77,7 @@ const Home = () => {
       {/* MAIN HEADER */}
       <div className='bg-secondary rounded-b-3xl pt-5 pb-2'>
         <div className='flex justify-between items-center'>
-          <img width={100} className='rounded-3xl mx-3 cursor-pointer' src={logo} alt="" />
+          <img width={100} className='mx-3 cursor-pointer' src={logo} alt="" />
           {(userRole === "admin" || userRole === "manager") && (
             <NavLink to={"/admin"}>
               <button className='font-light mx-4 cursor-pointer px-4 py-2 rounded-sm bg-[#7928ff] text-white hover:bg-[#6a1de1]'>
