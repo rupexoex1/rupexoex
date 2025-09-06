@@ -5,15 +5,22 @@ import { ArrowLeft, Headset, Wallet2, Info, ShieldCheck, HelpCircle } from "luci
 import { useAppContext } from "../context/AppContext";
 import USDTPriceCards from "../components/containers/USDTPriceCards";
 
+// helper: USD format with compact fallback for long strings
+const formatUSD = (n, { compact = false } = {}) => {
+  const opts = { style: "currency", currency: "USD", maximumFractionDigits: 2 };
+  if (compact) opts.notation = "compact";
+  return new Intl.NumberFormat("en-US", opts).format(Number(n || 0));
+};
+
 const Exchange = () => {
   const navigate = useNavigate();
 
   const {
     axios,
     token,
-    userBalance,           // net: credits/forwarded - deducts
+    userBalance,           // NET balance (credits/forwarded - deducts)
     fetchUserBalance,
-    selectedPlan,          // Basic | VIP
+    selectedPlan,
     basicPrice,
     vipPrice,
     basicMin,
@@ -25,7 +32,7 @@ const Exchange = () => {
   const [processingHold, setProcessingHold] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // fetch balance + pending orders for precise "available after holds"
+  // fetch balance + pending orders
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -49,15 +56,10 @@ const Exchange = () => {
     })();
   }, [token, axios, fetchUserBalance]);
 
-  const availableAfterHold = useMemo(() => {
-    const avail = Number(userBalance || 0);
-    const hold = Number(processingHold || 0);
-    return Math.max(0, avail - hold);
-  }, [userBalance, processingHold]);
-
-  const total = useMemo(() => {
-    return availableAfterHold + Number(processingHold || 0);
-  }, [availableAfterHold, processingHold]);
+  // ✅ Correct math (same as Profile)
+  const available = useMemo(() => Number(userBalance || 0), [userBalance]); // net after holds
+  const processing = useMemo(() => Number(processingHold || 0), [processingHold]);
+  const total = useMemo(() => available + processing, [available, processing]);
 
   const handleBack = () => {
     if (window.history.length > 2) navigate(-1);
@@ -74,20 +76,23 @@ const Exchange = () => {
     navigate("/sell", { state: { plan: selectedPlan } });
   };
 
-  const StatTile = ({ label, value, icon, valueClassName = "text-xs" }) => (
-    <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3 flex items-center gap-3">
-      <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700">{icon}</div>
-      <div className="flex-1">
-        <div className="text-xs text-slate-400">{label}</div>
-        <div className={`${valueClassName} font-semibold`}>
-          {loading
-            ? "…"
-            : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" })
-                .format(Number(value || 0))}
+  const StatTile = ({ label, value, icon }) => {
+    const full = loading ? "…" : formatUSD(value);
+    const show =
+      loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
+
+    return (
+      <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3 flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700">{icon}</div>
+        <div className="flex-1">
+          <div className="text-xs text-slate-400">{label}</div>
+          <div className="text-xs font-semibold truncate" title={loading ? "" : full}>
+            {show}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const LimitRow = ({ k, v }) => (
     <div className="flex items-center justify-between text-sm py-1">
@@ -131,12 +136,12 @@ const Exchange = () => {
           />
           <StatTile
             label="Available"
-            value={availableAfterHold}
+            value={available}
             icon={<ShieldCheck size={16} className="text-emerald-300" />}
           />
           <StatTile
             label="Processing"
-            value={processingHold}
+            value={processing}
             icon={<Info size={16} className="text-amber-300" />}
           />
         </div>
@@ -148,15 +153,12 @@ const Exchange = () => {
             <div className="text-xs text-slate-400">Live rates of today</div>
           </div>
 
-          {/* Your existing cards */}
           <USDTPriceCards />
 
-          {/* hint */}
           <div className="mt-2 text-[11px] text-slate-400">
             Choose a plan to continue. You’ll specify USDT on the next step.
           </div>
 
-          {/* Continue */}
           <div className="mt-4">
             <button
               onClick={goSell}
