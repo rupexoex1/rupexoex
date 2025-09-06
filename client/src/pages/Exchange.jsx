@@ -1,7 +1,7 @@
 // src/pages/Exchange.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Headset, Wallet2, Info, ShieldCheck, HelpCircle } from "lucide-react";
+import { ArrowLeft, Headset, HelpCircle } from "lucide-react";
 import { useAppContext } from "../context/AppContext";
 import USDTPriceCards from "../components/containers/USDTPriceCards";
 
@@ -51,7 +51,7 @@ const Exchange = () => {
               .reduce((sum, o) => sum + Number(o.amount || 0), 0)
           : 0;
 
-        // ✅ withdrawals hold WITHOUT fee
+        // withdrawals hold WITHOUT fee
         const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
           ? wdRes.data.withdrawals
               .filter((w) => w.status === "pending")
@@ -87,19 +87,17 @@ const Exchange = () => {
     navigate("/sell", { state: { plan: selectedPlan } });
   };
 
-  const StatTile = ({ label, value, icon }) => {
+  // Tile without icon
+  const StatTile = ({ label, value }) => {
     const full = loading ? "…" : formatUSD(value);
     const show =
       loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
 
     return (
-      <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3 flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700">{icon}</div>
-        <div className="flex-1">
-          <div className="text-xs text-slate-400">{label}</div>
-          <div className="text-xs font-semibold truncate" title={loading ? "" : full}>
-            {show}
-          </div>
+      <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3">
+        <div className="text-xs text-slate-400">{label}</div>
+        <div className="text-xs font-semibold truncate mt-0.5" title={loading ? "" : full}>
+          {show}
         </div>
       </div>
     );
@@ -137,24 +135,11 @@ const Exchange = () => {
 
       {/* Content */}
       <div className="px-4 py-5 space-y-6 max-w-3xl mx-auto">
-
-        {/* Balance Tiles */}
+        {/* Balance Tiles (no icons) */}
         <div className="grid grid-cols-3 gap-3">
-          <StatTile
-            label="Total"
-            value={total}
-            icon={<Wallet2 size={16} className="text-slate-300" />}
-          />
-          <StatTile
-            label="Available"
-            value={available}
-            icon={<ShieldCheck size={16} className="text-emerald-300" />}
-          />
-          <StatTile
-            label="Processing"
-            value={processing}
-            icon={<Info size={16} className="text-amber-300" />}
-          />
+          <StatTile label="Total"      value={total} />
+          <StatTile label="Available"  value={available} />
+          <StatTile label="Processing" value={processing} />
         </div>
 
         {/* Plans / Rates */}
