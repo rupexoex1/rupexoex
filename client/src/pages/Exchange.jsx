@@ -28,11 +28,10 @@ const Exchange = () => {
     vipMin,
   } = useAppContext();
 
-  // local: processing hold (sum of all pending orders + pending withdrawals(+fee))
+  // local: processing hold (sum of all pending orders + withdrawals WITHOUT fee)
   const [processingHold, setProcessingHold] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // fetch balance + pending holds
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -52,13 +51,11 @@ const Exchange = () => {
               .reduce((sum, o) => sum + Number(o.amount || 0), 0)
           : 0;
 
+        // ✅ withdrawals hold WITHOUT fee
         const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
           ? wdRes.data.withdrawals
               .filter((w) => w.status === "pending")
-              .reduce(
-                (sum, w) => sum + Number(w.amount || 0) + Number(w.feeUSD ?? 7),
-                0
-              )
+              .reduce((sum, w) => sum + Number(w.amount || 0), 0)
           : 0;
 
         setProcessingHold(orderHold + withdrawHold);
@@ -70,8 +67,8 @@ const Exchange = () => {
     })();
   }, [token, axios, fetchUserBalance]);
 
-  // ✅ Correct math (same as Profile)
-  const available = useMemo(() => Number(userBalance || 0), [userBalance]); // net after holds
+  // tiles
+  const available = useMemo(() => Number(userBalance || 0), [userBalance]); // NET (fee already deducted)
   const processing = useMemo(() => Number(processingHold || 0), [processingHold]);
   const total = useMemo(() => available + processing, [available, processing]);
 
@@ -92,12 +89,14 @@ const Exchange = () => {
 
   const StatTile = ({ label, value, icon }) => {
     const full = loading ? "…" : formatUSD(value);
-    const show = loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
+    const show =
+      loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
+
     return (
       <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3 flex items-center gap-3">
         <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700">{icon}</div>
         <div className="flex-1">
-          <div className="text-[11px] text-slate-400 leading-tight">{label}</div>
+          <div className="text-xs text-slate-400">{label}</div>
           <div className="text-xs font-semibold truncate" title={loading ? "" : full}>
             {show}
           </div>
@@ -151,7 +150,7 @@ const Exchange = () => {
             value={available}
             icon={<ShieldCheck size={16} className="text-emerald-300" />}
           />
-        <StatTile
+          <StatTile
             label="Processing"
             value={processing}
             icon={<Info size={16} className="text-amber-300" />}

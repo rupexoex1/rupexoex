@@ -1,4 +1,3 @@
-// src/pages/Profile.jsx
 import { NavLink, useNavigate } from "react-router-dom";
 import Signout from "../components/admin/Signout";
 import coins from "../assets/static/coins.png";
@@ -9,9 +8,6 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 
-const fmtUSD = (n) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
-
 const Profile = () => {
   const navigate = useNavigate();
   const isLoggedIn = !!localStorage.getItem("token");
@@ -19,22 +15,19 @@ const Profile = () => {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const userEmail = storedUser?.email || "guest@email.com";
 
-  // from context (userBalance = NET after all deducts)
-  const { axios, userBalance, fetchUserBalance, token } = useAppContext();
+  // from context
+  const { axios, userBalance, fetchUserBalance } = useAppContext();
 
-  // local: holds & loading
+  // local: processing & loading
   const [processingHold, setProcessingHold] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // fetch balance + pending holds (orders + withdrawals incl. $7 fee)
+  // fetch available (context) + pending orders/withdrawals -> processing (EXCLUDING $7 fee)
   useEffect(() => {
-    if (!isLoggedIn || !token) {
-      setLoading(false);
-      return;
-    }
+    if (!isLoggedIn) return;
     (async () => {
       try {
-        await fetchUserBalance(); // sets userBalance (NET)
+        await fetchUserBalance(); // sets userBalance in context
 
         const [ordRes, wdRes] = await Promise.all([
           axios.get("/api/v1/users/orders"),
@@ -47,11 +40,11 @@ const Profile = () => {
               .reduce((sum, o) => sum + Number(o.amount || 0), 0)
           : 0;
 
-        // include fee in holds (feeUSD from API; fallback 7)
+        // ✅ withdrawal hold WITHOUT fee
         const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
           ? wdRes.data.withdrawals
               .filter((w) => w.status === "pending")
-              .reduce((sum, w) => sum + Number(w.amount || 0) + Number(w.feeUSD ?? 7), 0)
+              .reduce((sum, w) => sum + Number(w.amount || 0), 0)
           : 0;
 
         setProcessingHold(orderHold + withdrawHold);
@@ -61,13 +54,10 @@ const Profile = () => {
         setLoading(false);
       }
     })();
-  }, [isLoggedIn, token, axios, fetchUserBalance]);
+  }, [isLoggedIn, axios, fetchUserBalance]);
 
-  // ✅ Correct math:
-  // available = NET (already after holds)
-  // processing = pending orders + pending withdrawals(+fee)
-  // total = available + processing (pre-hold snapshot)
-  const available = useMemo(() => Number(userBalance || 0), [userBalance]);
+  // balances
+  const available = useMemo(() => Number(userBalance || 0), [userBalance]); // NET (fee already deducted)
   const processing = useMemo(() => Number(processingHold || 0), [processingHold]);
   const total = useMemo(() => available + processing, [available, processing]);
 
@@ -133,9 +123,41 @@ const Profile = () => {
 
         {/* Balance Boxes */}
         <div className="grid grid-cols-3 gap-2 mt-6 text-center text-sm">
-          <BalanceBox label="Total" value={loading ? "…" : fmtUSD(total)} />
-          <BalanceBox label="Available" value={loading ? "…" : fmtUSD(available)} />
-          <BalanceBox label="Processing" value={loading ? "…" : fmtUSD(processing)} />
+          <BalanceBox
+            label="Total"
+            value={
+              loading
+                ? "…"
+                : new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(total)
+            }
+          />
+
+          <BalanceBox
+            label="Available"
+            value={
+              loading
+                ? "…"
+                : new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(available)
+            }
+          />
+
+          <BalanceBox
+            label="Processing"
+            value={
+              loading
+                ? "…"
+                : new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(processing)
+            }
+          />
         </div>
 
         {/* Action List */}
@@ -160,8 +182,8 @@ const Profile = () => {
 // Balance card box
 const BalanceBox = ({ label, value }) => (
   <div className="bg-[#1E293B] p-3 rounded">
-    <p className="text-gray-400 text-[11px] leading-tight">{label}</p>
-    <p className="text-xs font-bold truncate" title={String(value)}>{value}</p>
+    <p className="text-gray-400 text-xs">{label}</p>
+    <p className="text-sm font-bold truncate" title={String(value)}>{value}</p>
   </div>
 );
 

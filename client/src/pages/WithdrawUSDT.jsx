@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { toast } from "react-hot-toast";
 
-const NETWORK = "USDT -TRC20";
+const NETWORK_LABEL = "USDT - TRC20";
 const FIXED_FEE_USD = 7; // must match backend
 
 export default function WithdrawUSDT() {
@@ -13,27 +13,24 @@ export default function WithdrawUSDT() {
 
   const [loading, setLoading] = useState(true);
   const [address, setAddress] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(""); // USDT (fee separate)
 
   useEffect(() => {
     (async () => {
-      try {
-        await fetchUserBalance();
-      } catch { }
+      try { await fetchUserBalance(); } catch {}
       setLoading(false);
     })();
   }, [fetchUserBalance]);
 
-  const available = Number(userBalance || 0);
+  const available = Number(userBalance || 0);        // NET (holds already deducted)
   const parsedAmt = Number(amount || 0);
   const maxWithdrawable = Math.max(0, available - FIXED_FEE_USD);
+  const totalDebit = parsedAmt > 0 ? parsedAmt + FIXED_FEE_USD : 0;
 
-  const errors = [];
-  if (!address) errors.push("Wallet address is required.");
-  if (!amount) errors.push("Withdraw amount is required.");
-  if (parsedAmt <= 0) errors.push("Enter a valid amount.");
-  if (parsedAmt > maxWithdrawable)
-    errors.push(`Amount exceeds maximum withdrawable (${maxWithdrawable.toFixed(2)} after $${FIXED_FEE_USD} fee).`);
+  const hasAddress = address.trim().length > 0;
+  const validAmt   = Number.isFinite(parsedAmt) && parsedAmt > 0;
+  const withinBal  = totalDebit <= available + 1e-6; // float guard
+  const canSubmit  = !loading && hasAddress && validAmt && withinBal;
 
   const handleBack = () => {
     if (window.history.length > 2) navigate(-1);
@@ -49,16 +46,10 @@ export default function WithdrawUSDT() {
   };
 
   const submit = async () => {
-    if (parsedAmt + FIXED_FEE_USD > available) {
-      toast.error(
-        `Insufficient: need ${(parsedAmt + FIXED_FEE_USD).toFixed(2)}, have ${available.toFixed(
-          2
-        )} (incl. $${FIXED_FEE_USD} fee).`
-      );
-      return;
-    }
-    if (errors.length) {
-      toast.error(errors[0]);
+    if (!canSubmit) {
+      if (!hasAddress) return toast.error("Wallet address is required.");
+      if (!validAmt)   return toast.error("Enter a valid amount.");
+      if (!withinBal)  return toast.error(`Insufficient: need ${totalDebit.toFixed(2)}, have ${available.toFixed(2)}.`);
       return;
     }
 
@@ -66,7 +57,7 @@ export default function WithdrawUSDT() {
       setLoading(true);
       const res = await axios.post("/api/v1/users/withdrawals", {
         network: "TRC20",
-        address,
+        address: address.trim(),   // ✅ trim before sending
         amount: parsedAmt,
       });
 
@@ -81,11 +72,9 @@ export default function WithdrawUSDT() {
       const msg = err?.response?.data?.message || "Failed to submit withdrawal.";
       const details = err?.response?.data?.details;
       if (details) {
-        toast.error(
-          `${msg}: need ${Number(details.required).toFixed(2)}, have ${Number(
-            details.availableBalance ?? details.allowedAfterHolds
-          ).toFixed(2)}`
-        );
+        const need = Number(details.required);
+        const have = Number(details.availableBalance ?? details.allowedAfterHolds);
+        toast.error(`${msg}: need ${need.toFixed(2)}, have ${have.toFixed(2)}`);
       } else {
         toast.error(msg);
       }
@@ -94,6 +83,10 @@ export default function WithdrawUSDT() {
       setLoading(false);
     }
   };
+
+  const fmtUSD = (n) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 })
+      .format(Number(n || 0));
 
   return (
     <div className="bg-[#0F172A] min-h-screen text-white">
@@ -117,7 +110,7 @@ export default function WithdrawUSDT() {
           <label className="block text-sm text-gray-300 mb-2">Network</label>
           <div className="bg-[#0F172A] rounded px-3 py-3 text-sm flex items-center gap-2">
             <div className="w-5 h-5 bg-green-600 rounded-full grid place-items-center text-[10px]">T</div>
-            <span>{NETWORK}</span>
+            <span>{NETWORK_LABEL}</span>
           </div>
 
           {/* Address */}
@@ -148,7 +141,7 @@ export default function WithdrawUSDT() {
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
-                placeholder="— — —"
+                placeholder="0.00"
                 className="flex-1 bg-[#0F172A] border border-r-0 border-[#334155] rounded-l px-3 py-2 text-sm outline-none focus:border-blue-500"
                 inputMode="decimal"
               />
@@ -165,30 +158,24 @@ export default function WithdrawUSDT() {
           </div>
         </div>
 
-        {/* Info box */}
-        <div className="mt-4 bg-gradient-to-br from-[#0b1220] to-[#0f1b33] rounded p-4 border border-[#1b2740]">
-          <div className="w-6 h-6 bg-blue-600 rounded grid place-items-center text-white text-xs mb-2">i</div>
-          <p className="text-[11px] leading-5 text-gray-300">
-            For the safety of your funds, please note that the recharge address for each order may be
-            different. Please double-check carefully to avoid the risk of irretrievable funds.
-          </p>
+        {/* Total debit summary */}
+        <div className="mt-4 bg-[#0F172A] rounded p-3 border border-[#25324a]">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-slate-300">Total debit (amount + ${FIXED_FEE_USD})</span>
+            <span className="font-semibold">{fmtUSD(totalDebit)}</span>
+          </div>
         </div>
 
         {/* Confirm */}
         <button
           onClick={submit}
-          disabled={loading}
-          className="mt-5 w-full bg-[#2563eb] hover:bg-[#1e4fd3] disabled:opacity-50 rounded py-3 text-sm font-semibold"
+          disabled={!canSubmit}
+          className={`mt-5 w-full rounded py-3 text-sm font-semibold ${
+            canSubmit ? "bg-[#2563eb] hover:bg-[#1e4fd3]" : "bg-slate-700 cursor-not-allowed"
+          }`}
         >
           {loading ? "Processing…" : "Confirm"}
         </button>
-
-        {/* Client-side errors list */}
-        {errors.length > 0 && (
-          <ul className="mt-3 text-xs text-red-300 list-disc list-inside space-y-1">
-            {errors.map((e, i) => <li key={i}>{e}</li>)}
-          </ul>
-        )}
       </div>
     </div>
   );
