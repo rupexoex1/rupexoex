@@ -81,49 +81,88 @@ const SellUSDT = () => {
   // ✅ Available is already NET (backend ne holds deduct kar diye)
   const available = Number(userBalance || 0);
 
-  const handleAmountChange = (e) => {
-    const value = e.target.value;
-    setAmount(value);
-
-    const num = parseFloat(value);
-
+  const validate = (num) => {
     // reset error early
     setError("");
 
-    if (!value || !Number.isFinite(num)) {
+    if (!Number.isFinite(num) || num <= 0) {
       setError("Enter a valid number");
-      return;
+      return false;
     }
 
     // dynamic validation via limits from context
     if (plan === "Basic") {
       if (num < Number(basicMin) || num > Number(basicMax)) {
         setError(`Basic plan allows ${basicMin} to ${basicMax} USDT only`);
-        return;
+        return false;
       }
     } else if (plan === "VIP") {
       if (num <= Number(vipMin) - 1) {
         setError(`VIP plan allows more than ${Number(vipMin) - 1} USDT`);
-        return;
+        return false;
       }
     }
 
     // ✅ Validate against NET available (no double minus)
     if (num > available) {
       setError("You cannot sell more than your available balance");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleAmountChange = (e) => {
+    const value = e.target.value;
+    setAmount(value);
+    const num = parseFloat(value);
+    validate(num);
+  };
+
+  // 👉 Sell All button logic
+  const fillMax = () => {
+    if (available <= 0) {
+      toast.error("You have no available balance.");
       return;
     }
+
+    let maxByPlan = available;
+
+    if (plan === "Basic") {
+      const maxCap = Number(basicMax || available);
+      maxByPlan = Math.min(available, maxCap);
+
+      if (available < Number(basicMin)) {
+        toast.error(`Basic requires at least ${basicMin} USDT.`);
+        // still fill with available so user sees their balance
+        setAmount(available.toFixed(2));
+        validate(available);
+        return;
+      }
+    } else if (plan === "VIP") {
+      if (available < Number(vipMin)) {
+        toast.error(`VIP requires at least ${vipMin} USDT.`);
+        setAmount(available.toFixed(2));
+        validate(available);
+        return;
+      }
+    }
+
+    setAmount(maxByPlan.toFixed(2));
+    validate(maxByPlan);
   };
 
   const handleConfirm = async () => {
+    const amt = parseFloat(amount);
     if (!plan) return toast.error("Plan not selected");
     if (!selectedBank) return toast.error("Please select a payee");
-    if (!amount || !price || error) return toast.error("Fix the form errors first");
+    if (!amount || !price) return toast.error("Enter a valid amount");
+    if (!validate(amt)) return toast.error("Fix the form errors first");
 
     setLoading(true);
     try {
       const res = await axios.post("/api/v1/users/orders", {
-        amount: parseFloat(amount),
+        amount: amt,
         inrAmount,
         plan,
         price,
@@ -181,7 +220,7 @@ const SellUSDT = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M5.121 17.804A9.953 9.953 0 0112 15c2.21 0 4.253.713 5.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+            d="M5.121 17.804A9.953 9.953 0 0112 15c2.21 0 4.253.713 5.879 1.804M15 11a3 3 0 11-6 0 3 0 016 0z"
           />
         </svg>
       </button>
@@ -208,6 +247,17 @@ const SellUSDT = () => {
 
       {/* Amount + Rate */}
       <div className="bg-[#1e293b] w-full max-w-md rounded-lg p-4 space-y-3 text-sm mb-4">
+        <div className="flex items-center justify-between">
+          <span className="text-slate-300">USDT Amount</span>
+          <button
+            type="button"
+            onClick={fillMax}
+            className="text-xs px-2 py-1 rounded bg-blue-600 hover:bg-blue-700"
+          >
+            Sell All
+          </button>
+        </div>
+
         <div className="flex items-center border border-gray-600 rounded px-2 py-2">
           <input
             type="number"
