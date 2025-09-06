@@ -8,6 +8,13 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 
+// helper: USD format with compact fallback for long values
+const formatUSD = (n, { compact = false } = {}) => {
+  const opts = { style: "currency", currency: "USD", maximumFractionDigits: 2 };
+  if (compact) opts.notation = "compact";
+  return new Intl.NumberFormat("en-US", opts).format(Number(n || 0));
+};
+
 const Profile = () => {
   const navigate = useNavigate();
   const isLoggedIn = !!localStorage.getItem("token");
@@ -45,12 +52,9 @@ const Profile = () => {
   }, [isLoggedIn, axios, fetchUserBalance]);
 
   // balances
-  const available = Number(userBalance || 0);
-  const availableAfterHold = Math.max(0, available - Number(processingBalance || 0)); // show holds deducted
-  const total = useMemo(
-    () => availableAfterHold + Number(processingBalance || 0),
-    [availableAfterHold, processingBalance]
-  );
+  const available = Number(userBalance || 0); // 🔹 net after holds (HOLD already deducted)
+  const processing = Number(processingBalance || 0);
+  const total = useMemo(() => available + processing, [available, processing]); // 🔹 original pre-hold view
 
   const handleBack = () => {
     if (window.history.length > 2) navigate(-1);
@@ -116,38 +120,18 @@ const Profile = () => {
         <div className="grid grid-cols-3 gap-2 mt-6 text-center text-sm">
           <BalanceBox
             label="Total"
-            value={
-              loading
-                ? "…"
-                : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(total)
-            }
+            loading={loading}
+            amount={total}
           />
-
           <BalanceBox
             label="Available"
-            value={
-              loading
-                ? "…"
-                : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(availableAfterHold)
-            }
+            loading={loading}
+            amount={available}
           />
-
           <BalanceBox
             label="Processing"
-            value={
-              loading
-                ? "…"
-                : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(Number(processingBalance))
-            }
+            loading={loading}
+            amount={processing}
           />
         </div>
 
@@ -159,7 +143,7 @@ const Profile = () => {
           <ActionItem iconSrc={assets.exchange_tab} label="My Withdrawals" link="/withdrawals" />
           <ActionItem iconSrc={assets.bank_account} label="Bank Accounts" link="/select-payee" />
           <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" />
-          {/* ✅ Add the link here */}
+          {/* Withdraw page */}
           <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" link="/withdraw" />
         </div>
 
@@ -172,13 +156,20 @@ const Profile = () => {
   );
 };
 
-// Balance card box
-const BalanceBox = ({ label, value }) => (
-  <div className="bg-[#1E293B] p-3 rounded">
-    <p className="text-gray-400 text-xs">{label}</p>
-    <p className="text-sm font-bold">{value}</p>
-  </div>
-);
+// Balance card box (overflow-safe)
+const BalanceBox = ({ label, amount = 0, loading = false }) => {
+  const full = loading ? "…" : formatUSD(amount);
+  const show = loading ? "…" : (full.length > 14 ? formatUSD(amount, { compact: true }) : full);
+
+  return (
+    <div className="bg-[#1E293B] p-3 rounded">
+      <p className="text-gray-400 text-xs">{label}</p>
+      <p className="text-sm font-bold truncate" title={loading ? "" : full}>
+        {show}
+      </p>
+    </div>
+  );
+};
 
 // Action list row
 const ActionItem = ({ iconSrc, label, link }) => (
