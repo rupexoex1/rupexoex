@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { TronWeb } from "tronweb";
 import sendEmail from "../utils/sendEmail.js";
 import User from "../models/userModel.js";
 import PendingUser from "../models/PendingUser.js";
@@ -92,10 +91,6 @@ export const verifyOtp = async (req, res) => {
         .json({ success: false, message: "Invalid OTP" });
     }
 
-    // Generate TRON wallet
-    const tronWeb = new TronWeb({ fullHost: process.env.TRON_FULL_HOST });
-    const wallet = await tronWeb.createAccount();
-
     // Create verified user
     const newUser = new User({
       name: pending.name,
@@ -104,10 +99,6 @@ export const verifyOtp = async (req, res) => {
       password: pending.password, // already hashed
       role: pending.role,
       isVerified: true,
-      tronWallet: {
-        address: wallet.address.base58,
-        privateKey: wallet.privateKey, // TODO: Encrypt in production
-      },
     });
     await newUser.save();
 
@@ -123,7 +114,6 @@ export const verifyOtp = async (req, res) => {
         email: newUser.email,
         phone: newUser.phone,
         role: newUser.role,
-        tronWallet: newUser.tronWallet,
       },
       token,
     });
@@ -206,7 +196,6 @@ export const login = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
-        tronWallet: user.tronWallet,
       },
       token,
     });

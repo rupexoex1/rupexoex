@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       trim: true,
-      lowercase: true, // auto-normalize on save
+      lowercase: true,
       match: [/^\S+@\S+\.\S+$/, "Please enter a valid email address"],
     },
     phone: { type: String, required: true, unique: true },
@@ -23,10 +23,6 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
     isVerified: { type: Boolean, default: false },
-    tronWallet: {
-      address: { type: String, default: null },
-      privateKey: { type: String, default: null },
-    },
     balance: { type: Number, default: 0 },
   },
   { timestamps: true }
