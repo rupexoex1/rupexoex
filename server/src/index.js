@@ -13,10 +13,8 @@ const app = express();
 // All frontend from port 5173
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://rupexo.vercel.app",
   "https://rupexoex-dev.salite.site",
-  "https://rupexo.salite.site",
-  "https://www.rupexo.salite.site",
+  "https://rupexo.com/",
 ];
 app.use(
   cors({
