@@ -13,6 +13,7 @@ const app = express();
 // All frontend from port 5173
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:7001",
   "https://rupexoex-dev.salite.site",
   "https://rupexo.com",
   "https://www.rupexo.com",
