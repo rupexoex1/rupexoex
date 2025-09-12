@@ -15,7 +15,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://rupexoex-dev.salite.site",
   "https://rupexo.com",
-  "https://www.rupexo.salite.site",
+  "https://www.rupexo.com",
 ];
 app.use(
   cors({
