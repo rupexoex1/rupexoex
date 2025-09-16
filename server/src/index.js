@@ -17,8 +17,8 @@ const allowedOrigins = [
   "https://rupexoex-dev.salite.site",
   "https://rupexo.com",
   "https://www.rupexo.com",
-  "https://rupexo.salite.xyz",
-  "http://rupexo.salite.xyz"
+  "https://rupexo.salite.space",
+  "http://rupexo.salite.space"
 ];
 app.use(
   cors({
