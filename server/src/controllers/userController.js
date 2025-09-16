@@ -559,3 +559,22 @@ export const getWithdrawalById = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+// userController.js (add this export)
+
+export const adminGetUserBalance = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    const balance = await computeAvailableBalance(id);
+    return res.json({ success: true, balance });
+  } catch (err) {
+    console.error("adminGetUserBalance error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+

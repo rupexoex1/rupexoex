@@ -6,6 +6,10 @@ import Order from "../models/orderModel.js";
 import BalanceAdjustment from "../models/balanceAdjustmentModel.js";
 import Withdrawal from "../models/withdrawalModel.js";
 
+// deposit mode switch (same as userController)
+const isManual =
+  (process.env.DEPOSIT_MODE || "manual").toLowerCase() === "manual";
+
 /**
  * GET /admin/transactions
  */
@@ -82,7 +86,9 @@ export const updateOrderStatus = async (req, res) => {
   const { status } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ success: false, message: "Invalid order ID" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid order ID" });
   }
   if (!["confirmed", "failed"].includes(status)) {
     return res.status(400).json({ success: false, message: "Invalid status" });
@@ -91,7 +97,9 @@ export const updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(id);
     if (!order) {
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
     if (order.status !== "pending") {
       return res.status(400).json({
@@ -187,13 +195,18 @@ export const adminUpdateWithdrawalStatus = async (req, res) => {
     const { status } = req.body; // "approved" | "rejected"
 
     if (!["approved", "rejected"].includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid status" });
     }
 
     const wd = await Withdrawal.findById(id);
-    if (!wd) return res.status(404).json({ success: false, message: "Not found" });
+    if (!wd)
+      return res.status(404).json({ success: false, message: "Not found" });
     if (wd.status !== "pending") {
-      return res.status(400).json({ success: false, message: "Already processed" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Already processed" });
     }
 
     if (status === "rejected") {
@@ -212,7 +225,7 @@ export const adminUpdateWithdrawalStatus = async (req, res) => {
 
       if (!alreadyRefunded) {
         const refundAmount =
-          holdAdj?.amount ?? (Number(wd.amount || 0) + Number(wd.feeUSD || 7));
+          holdAdj?.amount ?? Number(wd.amount || 0) + Number(wd.feeUSD || 7);
         await new BalanceAdjustment({
           userId: wd.user,
           amount: refundAmount,
@@ -232,6 +245,50 @@ export const adminUpdateWithdrawalStatus = async (req, res) => {
     return res.json({ success: true, withdrawal: wd });
   } catch (err) {
     console.error("adminUpdateWithdrawalStatus error:", err);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+const computeAvailableBalance = async (userId) => {
+  const uid = new mongoose.Types.ObjectId(userId);
+  if (isManual) {
+    const adjustments = await BalanceAdjustment.find({ userId: uid }).lean();
+    const totalCredits = adjustments
+      .filter((a) => a.type === "credit")
+      .reduce((s, a) => s + Number(a.amount || 0), 0);
+    const totalDebits = adjustments
+      .filter((a) => a.type === "deduct")
+      .reduce((s, a) => s + Number(a.amount || 0), 0);
+    return totalCredits - totalDebits;
+  } else {
+    const [txs, adjustments] = await Promise.all([
+      Transaction.find({ userId: uid, status: "forwarded" }).lean(),
+      BalanceAdjustment.find({ userId: uid }).lean(),
+    ]);
+    const totalForwarded = txs.reduce((s, tx) => s + Number(tx.amount || 0), 0);
+    const totalDebits = adjustments
+      .filter((a) => a.type === "deduct")
+      .reduce((s, a) => s + Number(a.amount || 0), 0);
+    return totalForwarded - totalDebits;
+  }
+};
+
+// GET /api/v1/users/admin/users-with-balance
+export const adminListUsersWithBalance = async (_req, res) => {
+  try {
+    const users = await User.find().sort({ createdAt: -1 }).lean();
+
+    // parallel compute
+    const enriched = await Promise.all(
+      users.map(async (u) => {
+        const bal = await computeAvailableBalance(u._id);
+        return { ...u, availableBalance: bal };
+      })
+    );
+
+    return res.json({ success: true, users: enriched });
+  } catch (err) {
+    console.error("adminListUsersWithBalance error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

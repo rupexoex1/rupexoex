@@ -35,9 +35,10 @@ import {
   adminAdjustUserBalance,
 
   // 💸 withdrawals (USER)
-  createWithdrawal,      // POST /withdrawals
-  getMyWithdrawals,      // GET  /withdrawals (list mine)
-  getWithdrawalById,     // NEW: GET  /withdrawals/:id (tracking)
+  createWithdrawal, // POST /withdrawals
+  getMyWithdrawals, // GET  /withdrawals (list mine)
+  getWithdrawalById, // NEW: GET  /withdrawals/:id (tracking)
+  adminGetUserBalance,
 } from "../controllers/userController.js"; // <-- ensure getWithdrawalById is exported there
 
 import {
@@ -47,8 +48,9 @@ import {
   getAllOrders,
 
   // 💸 withdrawals admin
-  adminListWithdrawals,          // GET /admin/withdrawals
-  adminUpdateWithdrawalStatus,   // PUT /admin/withdrawals/:id
+  adminListWithdrawals, // GET /admin/withdrawals
+  adminUpdateWithdrawalStatus, // PUT /admin/withdrawals/:id
+  adminListUsersWithBalance,
 } from "../controllers/adminController.js";
 
 const userRoutes = express.Router();
@@ -92,7 +94,9 @@ userRoutes.get(
       const users = await User.find().sort({ createdAt: -1 });
       res.status(200).json({ success: true, users });
     } catch (err) {
-      res.status(500).json({ success: false, message: "Failed to fetch users" });
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch users" });
     }
   }
 );
@@ -107,12 +111,20 @@ userRoutes.patch(
       const { role } = req.body;
 
       if (!["admin", "manager", "user"].includes(role)) {
-        return res.status(400).json({ success: false, message: "Invalid role value" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid role value" });
       }
 
-      const updatedUser = await User.findByIdAndUpdate(id, { role }, { new: true });
+      const updatedUser = await User.findByIdAndUpdate(
+        id,
+        { role },
+        { new: true }
+      );
       if (!updatedUser) {
-        return res.status(404).json({ success: false, message: "User not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
       }
 
       res.status(200).json({
@@ -122,7 +134,9 @@ userRoutes.patch(
       });
     } catch (err) {
       console.error("Update role error:", err.message);
-      res.status(500).json({ success: false, message: "Failed to update user role" });
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to update user role" });
     }
   }
 );
@@ -170,6 +184,20 @@ userRoutes.get(
   verifyToken,
   authorizeRoles("admin", "manager"),
   getAllOrders
+);
+
+userRoutes.get(
+  "/admin/balance/:id",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  adminGetUserBalance
+);
+
+userRoutes.get(
+  "/admin/users-with-balance",
+  verifyToken,
+  authorizeRoles("admin", "manager"),
+  adminListUsersWithBalance
 );
 
 /* ========== 💸 Withdrawals (ADMIN) ========== */
