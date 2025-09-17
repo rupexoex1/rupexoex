@@ -14,11 +14,10 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:7001",
-  "https://rupexoex-dev.salite.site",
   "https://rupexo.com",
   "https://www.rupexo.com",
-  "https://rupexo.salite.space",
-  "http://rupexo.salite.space"
+  "https://rupexobackend.tempavatar.xyz",
+  "http://rupexobackend.tempavatar.xyz"
 ];
 app.use(
   cors({
