@@ -78,7 +78,7 @@ const Exchange = () => {
   };
 
   const goSupport = () => {
-    window.open("https://wa.me/923236619004?text=Hello%20Rupexo%20Support", "_blank", "noopener,noreferrer");
+    window.open("https://t.me/riorupexo", "_blank", "noopener,noreferrer");
   };
 
   const goSell = () => {

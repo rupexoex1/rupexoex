@@ -102,7 +102,7 @@ const Profile = () => {
           </button>
           <div className="w-10 h-10 rounded-full flex items-center justify-center">
             <a
-              href="https://wa.me/923236619004?text=Hello%20Rupexo%20Support"
+              href="https://t.me/riorupexo"
               target="_blank"
               rel="noreferrer"
             >
