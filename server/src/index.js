@@ -16,8 +16,7 @@ const allowedOrigins = [
   "http://localhost:7001",
   "https://rupexo.com",
   "https://www.rupexo.com",
-  "https://rupexobackend.tempavatar.xyz",
-  "http://rupexobackend.tempavatar.xyz"
+  "https://backend.rupexo.com"
 ];
 app.use(
   cors({
