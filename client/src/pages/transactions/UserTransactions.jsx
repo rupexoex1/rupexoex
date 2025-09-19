@@ -45,7 +45,7 @@ const UserTransactions = () => {
     }
   }, [token]);
 
-  if (loading) return <p className="text-white text-center mt-10">Loading....</p>;
+  if (loading) return <p className="text-white text-center mt-10">Loading...</p>;
   if (transactions.length === 0) return <p className="text-white text-center mt-10">No transactions yet.</p>;
 
   return (
