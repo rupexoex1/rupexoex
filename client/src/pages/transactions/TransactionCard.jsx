@@ -23,7 +23,7 @@ const TransactionCard = ({ tx }) => {
       <div className="mb-4">
         <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm opacity-60">Amount.</p>
+            <p className="text-sm opacity-60">Amount</p>
             <p className="text-lg font-semibold">{amount.toFixed(2)} USDT</p>
           </div>
           <div className={`px-3 py-1 rounded text-sm font-medium ${isCompleted ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>
