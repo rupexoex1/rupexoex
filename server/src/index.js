@@ -10,7 +10,7 @@ import { startDepositCron } from "./cronJobs/depositChecker.js";
 dbConnect();
 const app = express();
 
-// All frontend from port 5173
+// All frontend from port 5173.
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:7001",
