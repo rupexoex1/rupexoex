@@ -94,7 +94,7 @@ const Home = () => {
             <div className="flex flex-col">
               {nameWithRole === "Guest" ? (
                 <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
-                  Welcome to Rupexo
+                  Welcome to Rupexo...
                 </h2>
               ) : (
                 <h2 className="rich-text pt-5 pb-2 font-semibold text-sm leading-4">
