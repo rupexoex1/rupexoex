@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { toast } from "react-hot-toast";
 
@@ -24,19 +24,19 @@ const ConfirmModal = ({
   const v =
     variant === "danger"
       ? {
-          ring: "ring-red-500/30",
-          border: "border-red-600",
-          header: "text-red-300",
-          iconBg: "bg-red-600",
-          btn: "bg-red-600 hover:bg-red-700",
-        }
+        ring: "ring-red-500/30",
+        border: "border-red-600",
+        header: "text-red-300",
+        iconBg: "bg-red-600",
+        btn: "bg-red-600 hover:bg-red-700",
+      }
       : {
-          ring: "ring-green-500/30",
-          border: "border-green-600",
-          header: "text-green-300",
-          iconBg: "bg-green-600",
-          btn: "bg-green-600 hover:bg-green-700",
-        };
+        ring: "ring-green-500/30",
+        border: "border-green-600",
+        header: "text-green-300",
+        iconBg: "bg-green-600",
+        btn: "bg-green-600 hover:bg-green-700",
+      };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
@@ -89,46 +89,6 @@ const OrderManagement = () => {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
 
-  // --- drag-to-scroll state ---
-  const scrollRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
-  const dragPos = useRef({ x: 0, y: 0, left: 0, top: 0 });
-
-  const onPointerDown = (e) => {
-    // left click only; ignore when clicking interactive controls
-    if (
-      e.button !== 0 ||
-      e.target.closest("button,a,input,textarea,select,[role='button']")
-    )
-      return;
-
-    const el = scrollRef.current;
-    if (!el) return;
-    setDragging(true);
-    dragPos.current = {
-      x: e.clientX,
-      y: e.clientY,
-      left: el.scrollLeft,
-      top: el.scrollTop,
-    };
-    el.setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const dx = e.clientX - dragPos.current.x;
-    const dy = e.clientY - dragPos.current.y;
-    el.scrollLeft = dragPos.current.left - dx;
-    el.scrollTop = dragPos.current.top - dy;
-  };
-
-  const onPointerUp = (e) => {
-    setDragging(false);
-    scrollRef.current?.releasePointerCapture?.(e.pointerId);
-  };
-
   // debounce search
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim().toLowerCase()), 300);
@@ -156,7 +116,7 @@ const OrderManagement = () => {
       if (res.data.success) {
         toast.success(`Order ${newStatus}`);
 
-        // update in-place
+        // 👇 Turant frontend state update
         setOrders((prev) =>
           prev.map((o) =>
             o._id === orderId
@@ -224,7 +184,7 @@ const OrderManagement = () => {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search: Order#, last 6, status, plan, email, AC no, IFSC…"
+            placeholder="Search: Order#, last 6, status, plan, AC no, IFSC…"
             className="w-full rounded-md bg-[#1e293b] border border-[#334155] text-sm px-3 py-2 outline-none focus:border-blue-500"
           />
           {search && (
@@ -251,17 +211,7 @@ const OrderManagement = () => {
       {loading ? (
         <div className="text-center">Loading orders...</div>
       ) : (
-        <div
-          ref={scrollRef}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
-          className={`overflow-auto bg-[#1e293b] rounded-lg shadow-lg ${
-            dragging ? "cursor-grabbing select-none" : "cursor-grab"
-          }`}
-          style={{ touchAction: "none" }} // improves pointer dragging on touch/trackpads
-        >
+        <div className="overflow-x-auto bg-[#1e293b] rounded-lg shadow-lg">
           <table className="min-w-full text-sm text-left">
             <thead className="bg-[#334155] text-white uppercase text-xs">
               <tr>
@@ -283,6 +233,7 @@ const OrderManagement = () => {
                 const isPending = order.status === "pending";
                 const disabled = !isPending || updatingId === order._id;
 
+                // embedded object only
                 const ba = order.bankAccount || {};
                 const name = ba.accountHolder ?? "N/A";
                 const ac = ba.accountNumber ?? "N/A";
@@ -337,7 +288,7 @@ const OrderManagement = () => {
 
               {!loading && filteredOrders.length === 0 && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm opacity-70" colSpan={11}>
+                  <td className="px-4 py-6 text-center text-sm opacity-70" colSpan={10}>
                     No matching orders.
                   </td>
                 </tr>
