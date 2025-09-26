@@ -159,7 +159,10 @@ export const updateOrderStatus = async (req, res) => {
  */
 export const getAllOrders = async (_req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find()
+      .populate("user", "email") // 👈 sirf email
+      .sort({ createdAt: -1 })
+      .lean(); // optional (faster)
     res.status(200).json({ success: true, orders });
   } catch (err) {
     console.error("Error fetching orders:", err);

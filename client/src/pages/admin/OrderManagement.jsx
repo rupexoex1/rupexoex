@@ -160,6 +160,7 @@ const OrderManagement = () => {
         match(o?.price) ||
         match(o?.amount) ||
         match(o?.inrAmount) ||
+        match(o?.user?.email) ||
         match(ba?.accountHolder) ||
         match(ba?.accountNumber) ||
         match(ba?.ifsc) ||
@@ -215,6 +216,7 @@ const OrderManagement = () => {
             <thead className="bg-[#334155] text-white uppercase text-xs">
               <tr>
                 <th className="px-4 py-3">Order#</th>
+                <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Rate</th>
                 <th className="px-4 py-3">USDT</th>
@@ -240,6 +242,7 @@ const OrderManagement = () => {
                 return (
                   <tr key={order._id} className="align-top">
                     <td className="px-4 py-3">{order._id?.slice(-6)}</td>
+                    <td className="px-4 py-3">{order.user?.email || "—"}</td>
                     <td className="px-4 py-3">{order.plan}</td>
                     <td className="px-4 py-3">{order.price}</td>
                     <td className="px-4 py-3">USDT {order.amount}</td>
