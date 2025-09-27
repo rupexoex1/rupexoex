@@ -2,25 +2,18 @@ import mongoose from "mongoose";
 
 const dbConnect = async () => {
   try {
-    const uri = process.env.MONGODB_URI;
-    if (!uri) {
-      throw new Error("MONGODB_URI env is missing");
-    }
-
+    // Event: Database successfully connected
     mongoose.connection.on("connected", () => {
       console.log("Database connected successfully ✅");
     });
 
+    // Event: Database connection throws error
     mongoose.connection.on("error", (err) => {
-      console.error("❌ Database connection error:", err);
+      console.log("❌ Database connection error: " + err);
     });
-
-    // Attach your DB name here (rupexo). Keep Atlas string in MONGODB_URI.
-    await mongoose.connect(`${uri}/rupexo`);
+    await mongoose.connect(`${process.env.MONGODB_URI}/rupexo`);
   } catch (error) {
-    console.error("Error is from dbConnect.js:", error);
-    // bubble up so deployment fails fast instead of half-running
-    throw error;
+    console.log(`Error is from dbConnect.js file: ${error}`);
   }
 };
 
