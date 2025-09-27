@@ -6,11 +6,10 @@ const {
   SMTP_PORT,
   SMTP_USER,
   SMTP_PASS,
-  SMTP_SECURE,    // "true" | "false" (optional)
-  FROM_EMAIL,     // e.g. 'Rupexo <no-reply@rupexo.com>'
+  SMTP_SECURE,    // "true"|"false"
+  FROM_EMAIL,
 } = process.env;
 
-// warm instances me reuse ho jaye
 let transporter = null;
 
 function getTransporter() {
@@ -23,9 +22,7 @@ function getTransporter() {
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: Number(SMTP_PORT) || 587,
-    secure:
-      String(SMTP_SECURE).toLowerCase() === "true" ||
-      Number(SMTP_PORT) === 465,
+    secure: String(SMTP_SECURE).toLowerCase() === "true" || Number(SMTP_PORT) === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
   });
   return transporter;
