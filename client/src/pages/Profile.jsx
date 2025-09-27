@@ -168,6 +168,7 @@ const Profile = () => {
           <ActionItem iconSrc={assets.bank_account} label="Bank Accounts" link="/select-payee" />
           {/* <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" /> */}
           <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" link="/withdraw" />
+          <ActionItem iconSrc={assets.recent_transaction} label="Deposit" link="/deposit" />
         </div>
 
         {/* Signout */}
