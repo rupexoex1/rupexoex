@@ -86,9 +86,7 @@ export const verifyOtp = async (req, res) => {
     }
 
     if (pending.otp !== otpStr) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid OTP" });
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
 
     // Create verified user
@@ -143,11 +141,27 @@ export const resendOtp = async (req, res) => {
     pending.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await pending.save();
 
-    await sendEmail(
-      nEmail,
-      "Resend OTP",
-      `<h2>Your new OTP is: ${otp}</h2><p>It expires in 10 minutes.</p>`
-    );
+    try {
+      await sendEmail(
+        nEmail,
+        "Verify Your Email",
+        `<h2>Your OTP is: ${otp}</h2><p>This OTP will expire in 10 minutes.</p>`
+      );
+      return res
+        .status(200)
+        .json({ success: true, message: "OTP sent to email" });
+    } catch (mailErr) {
+      console.error(
+        "REGISTER_EMAIL_ERROR:",
+        mailErr?.code || mailErr?.message || mailErr
+      );
+      // PendingUser row to ban chuki — user 'Resend OTP' se try kar sakta hai
+      return res.status(202).json({
+        success: true,
+        message:
+          "Account is pending; email failed to send. Please use 'Resend OTP' or try later.",
+      });
+    }
 
     return res
       .status(200)
