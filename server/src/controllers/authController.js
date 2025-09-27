@@ -6,10 +6,10 @@ import PendingUser from "../models/PendingUser.js";
 import PasswordReset from "../models/PasswordReset.js";
 
 const norm = (s = "") => s.trim().toLowerCase();
-
 const JWT_SIGN = (user) =>
   jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET);
 
+// ======================== REGISTER ========================
 export const register = async (req, res) => {
   try {
     const { name, email, phone, password, role } = req.body;
@@ -46,23 +46,39 @@ export const register = async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    await sendEmail(
-      nEmail,
-      "Verify Your Email",
-      `<h2>Your OTP is: ${otp}</h2><p>This OTP will expire in 10 minutes.</p>`
-    );
+    // ---- send email (can be skipped for diagnosis) ----
+    if (process.env.SKIP_EMAIL !== "1") {
+      const mail = await sendEmail(
+        nEmail,
+        "Verify Your Email",
+        `<h2>Your OTP is: ${otp}</h2><p>This OTP will expire in 10 minutes.</p>`
+      );
+
+      if (!mail.ok) {
+        // optional: rollback pending record so user can re-try cleanly
+        // await PendingUser.deleteOne({ email: nEmail }).catch(() => {});
+        return res.status(502).json({
+          success: false,
+          message:
+            "Email service temporarily unavailable. Please try again in a minute.",
+        });
+      }
+    }
 
     return res
       .status(200)
       .json({ success: true, message: "OTP sent to email" });
   } catch (error) {
     console.error("Registration error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+    const msg =
+      process.env.NODE_ENV === "production"
+        ? "Internal Server Error"
+        : error?.message || "Internal Error";
+    return res.status(500).json({ success: false, message: msg });
   }
 };
 
+// ======================== VERIFY OTP ========================
 export const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -125,6 +141,7 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
+// ======================== RESEND OTP ========================
 export const resendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -143,11 +160,19 @@ export const resendOtp = async (req, res) => {
     pending.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await pending.save();
 
-    await sendEmail(
-      nEmail,
-      "Resend OTP",
-      `<h2>Your new OTP is: ${otp}</h2><p>It expires in 10 minutes.</p>`
-    );
+    if (process.env.SKIP_EMAIL !== "1") {
+      const mail = await sendEmail(
+        nEmail,
+        "Resend OTP",
+        `<h2>Your new OTP is: ${otp}</h2><p>It expires in 10 minutes.</p>`
+      );
+      if (!mail.ok) {
+        return res.status(502).json({
+          success: false,
+          message: "Email service temporarily unavailable. Try again.",
+        });
+      }
+    }
 
     return res
       .status(200)
@@ -160,6 +185,7 @@ export const resendOtp = async (req, res) => {
   }
 };
 
+// ======================== LOGIN ========================
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -207,6 +233,7 @@ export const login = async (req, res) => {
   }
 };
 
+// ======================== FORGOT / RESET ========================
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -228,11 +255,19 @@ export const forgotPassword = async (req, res) => {
       { upsert: true }
     );
 
-    await sendEmail(
-      nEmail,
-      "Reset Password OTP",
-      `<h2>Your OTP to reset password is: ${otp}</h2><p>It will expire in 10 minutes.</p>`
-    );
+    if (process.env.SKIP_EMAIL !== "1") {
+      const mail = await sendEmail(
+        nEmail,
+        "Reset Password OTP",
+        `<h2>Your OTP to reset password is: ${otp}</h2><p>It will expire in 10 minutes.</p>`
+      );
+      if (!mail.ok) {
+        return res.status(502).json({
+          success: false,
+          message: "Email service temporarily unavailable. Try again.",
+        });
+      }
+    }
 
     return res.status(200).json({
       success: true,
