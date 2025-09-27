@@ -6,8 +6,8 @@ const {
   SMTP_PORT,
   SMTP_USER,
   SMTP_PASS,
-  SMTP_SECURE,    // "true"|"false"
-  FROM_EMAIL,
+  SMTP_SECURE,   // "true" | "false"
+  FROM_EMAIL,    // e.g. 'Rupexo <no-reply@rupexo.com>'
 } = process.env;
 
 let transporter = null;
