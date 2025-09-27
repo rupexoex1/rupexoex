@@ -163,10 +163,10 @@ const Profile = () => {
         {/* Action List */}
         <div className="mt-6 space-y-3">
           <ActionItem iconSrc={assets.exchange_tab} label="Exchange History" link="/orders" />
-          <ActionItem iconSrc={assets.recent_transaction} label="Recent USDT Transactions" link="/user-transactions" />
+          {/* <ActionItem iconSrc={assets.recent_transaction} label="Recent USDT Transactions" link="/user-transactions" /> */}
           <ActionItem iconSrc={assets.exchange_tab} label="My Withdrawals" link="/withdrawals" />
           <ActionItem iconSrc={assets.bank_account} label="Bank Accounts" link="/select-payee" />
-          <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" />
+          {/* <ActionItem iconSrc={assets.reset_transaction} label="Reset transaction password" /> */}
           <ActionItem iconSrc={assets.withdraw} label="Withdraw USDT" link="/withdraw" />
         </div>
 
