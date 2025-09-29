@@ -1,3 +1,4 @@
+// src/pages/BlockedAccount.jsx
 import { useEffect, useState } from "react";
 import { useAppContext } from "../context/AppContext";
 import { useNavigate } from "react-router-dom";
@@ -8,22 +9,37 @@ export default function BlockedAccount() {
   const [checking, setChecking] = useState(false);
 
   const checkNow = async () => {
+    const t = localStorage.getItem("token");
+    if (!t) {
+      navigate("/login", { replace: true });
+      return;
+    }
     try {
       setChecking(true);
-      // protected ping — succeeds only if backend no longer blocks this token
-      await axios.get("/api/v1/users/user");
-      // success => unblocked
+      await axios.get("/api/v1/users/user"); // protected ping
+      // success => token valid & server no longer blocking
       setIsBlocked(false);
       localStorage.removeItem("isBlocked");
       navigate("/", { replace: true });
-    } catch {
-      // still blocked or unauth — stay
+    } catch (e) {
+      const status = e?.response?.status;
+      const msg = (e?.response?.data?.message || "").toLowerCase();
+      if (
+        status === 401 ||
+        (status === 400 && (msg.includes("token is not valid") || msg.includes("token")))
+      ) {
+        // token invalid/expired: force login
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("isBlocked");
+        navigate("/login", { replace: true });
+      }
+      // else still blocked: stay
     } finally {
       setChecking(false);
     }
   };
 
-  // auto-retry every 5s so admin unblocks -> user exits automatically
   useEffect(() => {
     const t = setInterval(checkNow, 5000);
     return () => clearInterval(t);
@@ -37,7 +53,6 @@ export default function BlockedAccount() {
         <p className="text-sm text-gray-600">
           Your account is currently blocked. Please contact support for assistance.
         </p>
-
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={checkNow}
@@ -46,7 +61,6 @@ export default function BlockedAccount() {
           >
             {checking ? "Checking…" : "Try Again"}
           </button>
-
           <button
             onClick={() => {
               localStorage.removeItem("token");

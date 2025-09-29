@@ -9,10 +9,8 @@ const AppContext = createContext();
 function decodeJWT(token) {
   try {
     const payload = token.split(".")[1];
-    const decoded = JSON.parse(atob(payload));
-    return decoded;
-  } catch (err) {
-    console.error("Failed to decode JWT", err);
+    return JSON.parse(atob(payload));
+  } catch {
     return null;
   }
 }
@@ -24,7 +22,7 @@ export const AppProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔒 blocked UX flag (persisted)
+  // 🔒 persisted blocked flag for UX guarding
   const [isBlocked, setIsBlocked] = useState(
     typeof window !== "undefined" && localStorage.getItem("isBlocked") === "1"
   );
@@ -48,7 +46,7 @@ export const AppProvider = ({ children }) => {
       const res = await axios.get("/api/v1/users/balance");
       if (res.data.success) setUserBalance(res.data.balance);
     } catch (err) {
-      console.error("Failed to fetch balance:", err.message);
+      console.error("Failed to fetch balance:", err?.message);
     }
   };
 
@@ -62,8 +60,8 @@ export const AppProvider = ({ children }) => {
         setBasicMax(Number(res.data.basicMax ?? 5000));
         setVipMin(Number(res.data.vipMin ?? 5001));
       }
-    } catch (error) {
-      console.error("Error fetching rates:", error.message);
+    } catch (err) {
+      console.error("Error fetching rates:", err?.message);
     }
   };
 
@@ -78,7 +76,8 @@ export const AppProvider = ({ children }) => {
       const decoded = decodeJWT(storedToken);
       if (decoded?.role) setRole(decoded.role);
     }
-    if (!role && storedUser) {
+
+    if (storedUser && !role) {
       const parsed = JSON.parse(storedUser);
       if (parsed?.role) setRole(parsed.role);
     }
@@ -98,9 +97,10 @@ export const AppProvider = ({ children }) => {
     }
   }, [token]);
 
-  // Interceptor:
-  // - 403 ACCOUNT_BLOCKED => mark blocked + hard redirect to /blocked
-  // - any successful *protected* response => clear blocked flag (if it was set)
+  // Global interceptor:
+  // - 403 ACCOUNT_BLOCKED → mark blocked + force /blocked
+  // - any successful protected call → clear blocked flag
+  // - 401 / 400 token errors → force logout → /login
   useEffect(() => {
     const resInterceptor = axios.interceptors.response.use(
       (r) => {
@@ -114,23 +114,43 @@ export const AppProvider = ({ children }) => {
       (err) => {
         const status = err?.response?.status;
         const code = err?.response?.data?.code;
+        const msg = (err?.response?.data?.message || "").toLowerCase();
 
+        // Blocked
         if (status === 403 && code === "ACCOUNT_BLOCKED") {
           setIsBlocked(true);
           localStorage.setItem("isBlocked", "1");
           if (window.location.pathname !== "/blocked") {
             window.location.replace("/blocked");
           }
+          return Promise.reject(err);
         }
+
+        // Invalid/expired/missing token
+        const tokenInvalid =
+          status === 401 ||
+          (status === 400 && (msg.includes("token is not valid") || msg.includes("token")));
+
+        if (tokenInvalid) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("isBlocked");
+          delete axios.defaults.headers.common["Authorization"];
+          if (window.location.pathname !== "/login") {
+            window.location.replace("/login");
+          }
+        }
+
         return Promise.reject(err);
       }
     );
+
     return () => {
       axios.interceptors.response.eject(resInterceptor);
     };
   }, [isBlocked]);
 
-  // 🔁 If user becomes unblocked while on /blocked, kick them back home
+  // If user becomes unblocked while on /blocked, kick them out
   useEffect(() => {
     if (!isBlocked && window.location.pathname === "/blocked") {
       navigate("/", { replace: true });
