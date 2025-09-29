@@ -24,6 +24,11 @@ export const AppProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // blocked state (UX guard)
+  const [isBlocked, setIsBlocked] = useState(
+    typeof window !== "undefined" && localStorage.getItem("isBlocked") === "1"
+  );
+
   // rates
   const [basicPrice, setBasicPrice] = useState("91.50");
   const [vipPrice, setVipPrice] = useState("94.00");
@@ -62,7 +67,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // initial bootstrap
+  // bootstrap (token/role + initial fetches)
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
@@ -70,11 +75,9 @@ export const AppProvider = ({ children }) => {
     if (storedToken) {
       setToken(storedToken);
       axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
-
       const decoded = decodeJWT(storedToken);
       if (decoded?.role) setRole(decoded.role);
     }
-
     if (!role && storedUser) {
       const parsed = JSON.parse(storedUser);
       if (parsed?.role) setRole(parsed.role);
@@ -86,16 +89,38 @@ export const AppProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Global response interceptor: blocked → /blocked (and optional 401 handling)
+  // keep axios auth header in sync when token changes
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
+
+  // Global response interceptor:
+  // - On 403 ACCOUNT_BLOCKED → mark blocked + hard redirect to /blocked
+  // - On any successful protected call → clear blocked flag (if previously blocked)
   useEffect(() => {
     const resInterceptor = axios.interceptors.response.use(
-      (r) => r,
+      (r) => {
+        const hasAuth = !!r?.config?.headers?.Authorization;
+        if (hasAuth && (isBlocked || localStorage.getItem("isBlocked") === "1")) {
+          setIsBlocked(false);
+          localStorage.removeItem("isBlocked");
+        }
+        return r;
+      },
       (err) => {
         const status = err?.response?.status;
         const code = err?.response?.data?.code;
 
         if (status === 403 && code === "ACCOUNT_BLOCKED") {
-          navigate("/blocked");
+          setIsBlocked(true);
+          localStorage.setItem("isBlocked", "1");
+          if (window.location.pathname !== "/blocked") {
+            window.location.replace("/blocked"); // harder lock than navigate()
+          }
         }
 
         // Optional: auto-logout on 401
@@ -113,7 +138,7 @@ export const AppProvider = ({ children }) => {
     return () => {
       axios.interceptors.response.eject(resInterceptor);
     };
-  }, [navigate]);
+  }, [isBlocked, navigate]);
 
   const value = {
     navigate,
@@ -123,6 +148,9 @@ export const AppProvider = ({ children }) => {
     role,
     setRole,
     loading,
+    // blocked
+    isBlocked,
+    setIsBlocked,
     // rates
     basicPrice,
     vipPrice,

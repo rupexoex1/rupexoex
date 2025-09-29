@@ -1,49 +1,52 @@
-import { Toaster } from "react-hot-toast"
-import { Route, Routes } from "react-router-dom"
-import Layout from "./layout/Layout"
-import Home from "./pages/Home"
-import Exchange from "./pages/Exchange"
-import Orders from "./pages/Orders"
-import Profile from "./pages/Profile"
-import Coin from "./components/liveCryptoCoins/Coin"
-import Register from "./components/admin/Register"
-import Login from "./components/admin/Login"
-import VerifyOtp from "./components/admin/VerifyOtp"
-import ForgotPassword from "./components/admin/ForgotPassword"
-import VerifyResetOtp from "./components/admin/VerifyResetOtp "
-import ResetPassword from "./components/admin/ResetPassword"
-import AdminLayout from "./pages/admin/AdminLayout"
-import Deposit from "./pages/deposit/Deposit"
-import SellUSDT from "./pages/sell/SellUSDT"
-import WithdrawUSDT from "./pages/WithdrawUSDT"
+import { Toaster } from "react-hot-toast";
+import { Route, Routes } from "react-router-dom";
+import Layout from "./layout/Layout";
+import Home from "./pages/Home";
+import Exchange from "./pages/Exchange";
+import Orders from "./pages/Orders";
+import Profile from "./pages/Profile";
+import Coin from "./components/liveCryptoCoins/Coin";
+import Register from "./components/admin/Register";
+import Login from "./components/admin/Login";
+import VerifyOtp from "./components/admin/VerifyOtp";
+import ForgotPassword from "./components/admin/ForgotPassword";
+import VerifyResetOtp from "./components/admin/VerifyResetOtp ";
+import ResetPassword from "./components/admin/ResetPassword";
+import AdminLayout from "./pages/admin/AdminLayout";
+import Deposit from "./pages/deposit/Deposit";
+import SellUSDT from "./pages/sell/SellUSDT";
+import WithdrawUSDT from "./pages/WithdrawUSDT";
 import WithdrawTracking from "./pages/WithdrawTracking";
-import UserWithdrawals from "./pages/UserWithdrawals"
+import UserWithdrawals from "./pages/UserWithdrawals";
 
-import { useAppContext } from "./context/AppContext"
-import Dashboard from "./pages/admin/Dashboard"
-import UserManagement from "./pages/admin/UserManagement"
-import WalletManagement from "./pages/admin/WalletManagement"
-import RateManagement from "./pages/admin/RateManagement"
-import OrderManagement from "./pages/admin/OrderManagement"
-import TransactionHistory from "./pages/admin/TransactionHistory"
-import RoleManagement from "./pages/admin/RoleManagement"
-import ProtectedRoute from "./components/admin/ProtectedRoute"
-import UserTransactions from "./pages/transactions/UserTransactions"
-import SelectPayee from "./pages/sell/SelectPayee"
-import AddBankAccount from "./pages/sell/AddBankAccount"
-import OrderTracking from "./pages/order/OrderTracking"
-import MasterWalletSettings from "./pages/admin/MasterWalletSettings"
-import BalanceAdjust from "./pages/admin/BalanceAdjust"
-import WithdrawalsManagement from "./pages/admin/WithdrawalsManagement"
-import BlockedAccount from "./pages/BlockedAccount"
+import { useAppContext } from "./context/AppContext";
+import Dashboard from "./pages/admin/Dashboard";
+import UserManagement from "./pages/admin/UserManagement";
+import WalletManagement from "./pages/admin/WalletManagement";
+import RateManagement from "./pages/admin/RateManagement";
+import OrderManagement from "./pages/admin/OrderManagement";
+import TransactionHistory from "./pages/admin/TransactionHistory";
+import RoleManagement from "./pages/admin/RoleManagement";
+import ProtectedRoute from "./components/admin/ProtectedRoute";
+import UserTransactions from "./pages/transactions/UserTransactions";
+import SelectPayee from "./pages/sell/SelectPayee";
+import AddBankAccount from "./pages/sell/AddBankAccount";
+import OrderTracking from "./pages/order/OrderTracking";
+import MasterWalletSettings from "./pages/admin/MasterWalletSettings";
+import BalanceAdjust from "./pages/admin/BalanceAdjust";
+import WithdrawalsManagement from "./pages/admin/WithdrawalsManagement";
+import BlockedAccount from "./pages/BlockedAccount";
+import BlockGuard from "./components/BlockGuard";
 
 const App = () => {
-  const { token } = useAppContext()
+  const { token } = useAppContext();
+
   return (
     <>
       <Toaster />
-      <Routes>
+      <BlockGuard />
 
+      <Routes>
         <Route path="/" element={<Layout />}>
           {/* USER ROUTES */}
           <Route index element={<Home />} />
@@ -69,8 +72,8 @@ const App = () => {
           <Route path="/blocked" element={<BlockedAccount />} />
         </Route>
 
-
-        <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
+        {/* ADMIN / MANAGER */}
+        <Route element={<ProtectedRoute allowedRoles={["admin", "manager"]} />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="user" element={<UserManagement />} />
@@ -81,12 +84,12 @@ const App = () => {
             <Route path="role" element={<RoleManagement />} />
             <Route path="settings" element={<MasterWalletSettings />} />
             <Route path="adjust-balance" element={<BalanceAdjust />} />
-            <Route path="/admin/withdrawals" element={<WithdrawalsManagement />} />
+            <Route path="withdrawals" element={<WithdrawalsManagement />} /> {/* ✅ relative path */}
           </Route>
         </Route>
-      </Routes >
+      </Routes>
     </>
-  )
-}
+  );
+};
 
-export default App
+export default App;
