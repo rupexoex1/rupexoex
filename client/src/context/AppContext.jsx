@@ -24,7 +24,7 @@ export const AppProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // blocked state (UX guard)
+  // 🔒 blocked UX flag (persisted)
   const [isBlocked, setIsBlocked] = useState(
     typeof window !== "undefined" && localStorage.getItem("isBlocked") === "1"
   );
@@ -98,9 +98,9 @@ export const AppProvider = ({ children }) => {
     }
   }, [token]);
 
-  // Global response interceptor:
-  // - On 403 ACCOUNT_BLOCKED → mark blocked + hard redirect to /blocked
-  // - On any successful protected call → clear blocked flag (if previously blocked)
+  // Interceptor:
+  // - 403 ACCOUNT_BLOCKED => mark blocked + hard redirect to /blocked
+  // - any successful *protected* response => clear blocked flag (if it was set)
   useEffect(() => {
     const resInterceptor = axios.interceptors.response.use(
       (r) => {
@@ -119,25 +119,22 @@ export const AppProvider = ({ children }) => {
           setIsBlocked(true);
           localStorage.setItem("isBlocked", "1");
           if (window.location.pathname !== "/blocked") {
-            window.location.replace("/blocked"); // harder lock than navigate()
+            window.location.replace("/blocked");
           }
         }
-
-        // Optional: auto-logout on 401
-        // if (status === 401) {
-        //   localStorage.removeItem("token");
-        //   localStorage.removeItem("user");
-        //   delete axios.defaults.headers.common["Authorization"];
-        //   navigate("/login");
-        // }
-
         return Promise.reject(err);
       }
     );
-
     return () => {
       axios.interceptors.response.eject(resInterceptor);
     };
+  }, [isBlocked]);
+
+  // 🔁 If user becomes unblocked while on /blocked, kick them back home
+  useEffect(() => {
+    if (!isBlocked && window.location.pathname === "/blocked") {
+      navigate("/", { replace: true });
+    }
   }, [isBlocked, navigate]);
 
   const value = {
