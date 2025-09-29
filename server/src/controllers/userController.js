@@ -59,9 +59,12 @@ export const publicInfo = (req, res) =>
 /* =========================
    Deposit check (TRON)
 ========================= */
+// checkUSDTDeposit
 export const checkUSDTDeposit = async (req, res) => {
   try {
-    const setting = (await Setting.findOne()) || (await Setting.create({}));
+    const setting =
+      (await Setting.findOne({ key: "RATES" })) ||
+      (await Setting.create({ key: "RATES" }));
 
     return res.status(200).json({
       success: true,
@@ -78,7 +81,6 @@ export const checkUSDTDeposit = async (req, res) => {
       .json({ success: false, message: "Error retrieving deposit info" });
   }
 };
-
 
 /* =========================
    Transactions / Balance
@@ -298,12 +300,10 @@ export const placeOrder = async (req, res) => {
         });
       } catch (inner) {
         console.error("placeOrder fallback error:", inner);
-        return res
-          .status(500)
-          .json({
-            success: false,
-            message: "Server error during order placement (fallback)",
-          });
+        return res.status(500).json({
+          success: false,
+          message: "Server error during order placement (fallback)",
+        });
       }
     }
 
@@ -357,10 +357,13 @@ export const getOrderById = async (req, res) => {
 /* =========================
    Settings
 ========================= */
+// GET /admin/settings
 export const getSettings = async (req, res) => {
   try {
-    let setting = await Setting.findOne();
-    if (!setting) setting = await Setting.create({});
+    let setting = await Setting.findOne({ key: "RATES" });
+    if (!setting) {
+      setting = await Setting.create({ key: "RATES" });
+    }
     res.json({
       success: true,
       masterWalletAddress:
@@ -368,12 +371,14 @@ export const getSettings = async (req, res) => {
       depositMode: process.env.DEPOSIT_MODE || "manual",
     });
   } catch (err) {
+    console.error("getSettings error:", err?.message);
     res
       .status(500)
       .json({ success: false, message: "Failed to fetch settings" });
   }
 };
 
+// PUT /admin/settings
 export const updateSettings = async (req, res) => {
   try {
     const { masterWalletAddress } = req.body;
@@ -382,17 +387,22 @@ export const updateSettings = async (req, res) => {
         .status(400)
         .json({ success: false, message: "masterWalletAddress is required" });
     }
-    let setting = await Setting.findOne();
-    if (!setting) setting = new Setting({});
-    setting.masterWalletAddress = masterWalletAddress.trim();
-    setting.updatedBy = req.user._id;
-    await setting.save();
-    res.json({
+
+    const addr = masterWalletAddress.trim();
+
+    const setting = await Setting.findOneAndUpdate(
+      { key: "RATES" }, // fixed key
+      { $set: { masterWalletAddress: addr, updatedBy: req.user._id } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    return res.json({
       success: true,
       message: "Settings updated",
       masterWalletAddress: setting.masterWalletAddress,
     });
   } catch (err) {
+    console.error("updateSettings error:", err?.message);
     res
       .status(500)
       .json({ success: false, message: "Failed to update settings" });
@@ -408,12 +418,10 @@ export const adminAdjustUserBalance = async (req, res) => {
     const { amount, type, reason } = req.body;
 
     if (!amount || !type || !["credit", "deduct"].includes(type)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "amount and valid type (credit|deduct) required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "amount and valid type (credit|deduct) required",
+      });
     }
 
     const user = await User.findById(id);
@@ -567,7 +575,9 @@ export const adminGetUserBalance = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid user ID" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid user ID" });
     }
 
     const balance = await computeAvailableBalance(id);
@@ -577,4 +587,3 @@ export const adminGetUserBalance = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
