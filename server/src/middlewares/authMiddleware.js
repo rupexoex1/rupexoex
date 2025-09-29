@@ -9,7 +9,9 @@ const verifyToken = async (req, res, next) => {
     token = authHeader.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ message: "No token, authorization denied" });
+      return res
+        .status(401)
+        .json({ message: "No token, authorization denied" });
     }
 
     try {
@@ -21,6 +23,16 @@ const verifyToken = async (req, res, next) => {
       }
 
       req.user = user; // ✅ attach full user object
+      // ⛔ Blocked users: short-circuit with 403
+      if (user.blocked) {
+        return res.status(403).json({
+          code: "ACCOUNT_BLOCKED",
+          message:
+            user.blockedReason ||
+            "Your account is blocked. Please contact support.",
+        });
+      }
+
       next();
     } catch (error) {
       console.error("Token error:", error.message);
@@ -30,5 +42,3 @@ const verifyToken = async (req, res, next) => {
     return res.status(401).json({ message: "No token, authorization denied" });
   }
 };
-
-export default verifyToken;

@@ -1,14 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import axios from 'axios'
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL
+axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const AppContext = createContext();
 
 function decodeJWT(token) {
   try {
-    const payload = token.split('.')[1];
+    const payload = token.split(".")[1];
     const decoded = JSON.parse(atob(payload));
     return decoded;
   } catch (err) {
@@ -28,7 +28,7 @@ export const AppProvider = ({ children }) => {
   const [basicPrice, setBasicPrice] = useState("91.50");
   const [vipPrice, setVipPrice] = useState("94.00");
 
-  // plan limits (NEW: dynamic)
+  // plan limits
   const [basicMin, setBasicMin] = useState(100);
   const [basicMax, setBasicMax] = useState(5000);
   const [vipMin, setVipMin] = useState(5001);
@@ -41,9 +41,7 @@ export const AppProvider = ({ children }) => {
   const fetchUserBalance = async () => {
     try {
       const res = await axios.get("/api/v1/users/balance");
-      if (res.data.success) {
-        setUserBalance(res.data.balance);
-      }
+      if (res.data.success) setUserBalance(res.data.balance);
     } catch (err) {
       console.error("Failed to fetch balance:", err.message);
     }
@@ -53,11 +51,8 @@ export const AppProvider = ({ children }) => {
     try {
       const res = await axios.get("/api/v1/users/rates");
       if (res.data) {
-        // rates
         setBasicPrice(res.data.basic);
         setVipPrice(res.data.vip);
-
-        // limits (with safe defaults)
         setBasicMin(Number(res.data.basicMin ?? 100));
         setBasicMax(Number(res.data.basicMax ?? 5000));
         setVipMin(Number(res.data.vipMin ?? 5001));
@@ -67,41 +62,91 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // initial bootstrap
   useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+
     if (storedToken) {
-      setToken(storedToken)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
+      setToken(storedToken);
+      axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+
       const decoded = decodeJWT(storedToken);
       if (decoded?.role) setRole(decoded.role);
     }
-    if (storedUser) {
+
+    if (!role && storedUser) {
       const parsed = JSON.parse(storedUser);
-      setRole(parsed?.role || null);
+      if (parsed?.role) setRole(parsed.role);
     }
+
     fetchPricesFromBackend();
     fetchUserBalance();
     setLoading(false);
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ✅ Global response interceptor: blocked → /blocked (and optional 401 handling)
+  useEffect(() => {
+    const resInterceptor = axios.interceptors.response.use(
+      (r) => r,
+      (err) => {
+        const status = err?.response?.status;
+        const code = err?.response?.data?.code;
+
+        if (status === 403 && code === "ACCOUNT_BLOCKED") {
+          navigate("/blocked");
+        }
+
+        // Optional: auto-logout on 401
+        // if (status === 401) {
+        //   localStorage.removeItem("token");
+        //   localStorage.removeItem("user");
+        //   delete axios.defaults.headers.common["Authorization"];
+        //   navigate("/login");
+        // }
+
+        return Promise.reject(err);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(resInterceptor);
+    };
+  }, [navigate]);
 
   const value = {
-    navigate, axios, token, setToken, role, setRole, loading,
+    navigate,
+    axios,
+    token,
+    setToken,
+    role,
+    setRole,
+    loading,
     // rates
-    basicPrice, vipPrice, setBasicPrice, setVipPrice, fetchPricesFromBackend,
+    basicPrice,
+    vipPrice,
+    setBasicPrice,
+    setVipPrice,
+    fetchPricesFromBackend,
     // limits
-    basicMin, basicMax, vipMin, setBasicMin, setBasicMax, setVipMin,
+    basicMin,
+    basicMax,
+    vipMin,
+    setBasicMin,
+    setBasicMax,
+    setVipMin,
     // balances
-    userBalance, fetchUserBalance,
+    userBalance,
+    fetchUserBalance,
     // selections
-    selectedPlan, setSelectedPlan, selectedBank, setSelectedBank
-  }
+    selectedPlan,
+    setSelectedPlan,
+    selectedBank,
+    setSelectedBank,
+  };
 
-  return (
-    <AppContext.Provider value={value}>
-      {children}
-    </AppContext.Provider>
-  )
-}
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+};
 
-export const useAppContext = () => useContext(AppContext)
+export const useAppContext = () => useContext(AppContext);

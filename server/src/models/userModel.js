@@ -24,6 +24,15 @@ const userSchema = new mongoose.Schema(
     },
     isVerified: { type: Boolean, default: false },
     balance: { type: Number, default: 0 },
+    // 🔒 blocking controls
+    blocked: { type: Boolean, default: false },
+    blockedReason: { type: String, default: "" },
+    blockedAt: { type: Date, default: null },
+    blockedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );

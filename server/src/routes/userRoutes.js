@@ -141,6 +141,52 @@ userRoutes.patch(
   }
 );
 
+// ✅ Block / Unblock user
+userRoutes.patch(
+  "/admin/users/:id/block",
+  verifyToken,
+  authorizeRoles("admin"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { blocked, reason } = req.body; // boolean + optional
+
+      if (typeof blocked !== "boolean") {
+        return res
+          .status(400)
+          .json({ success: false, message: "blocked must be boolean" });
+      }
+
+      const update = {
+        blocked,
+        blockedReason: blocked ? reason || "" : "",
+        blockedAt: blocked ? new Date() : null,
+        blockedBy: blocked ? req.user?._id || null : null,
+      };
+
+      const updatedUser = await User.findByIdAndUpdate(id, update, {
+        new: true,
+      });
+      if (!updatedUser) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      res.json({
+        success: true,
+        message: blocked ? "User blocked" : "User unblocked",
+        user: updatedUser,
+      });
+    } catch (err) {
+      console.error("Toggle block error:", err.message);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to update block status" });
+    }
+  }
+);
+
 userRoutes.get(
   "/admin/settings",
   verifyToken,

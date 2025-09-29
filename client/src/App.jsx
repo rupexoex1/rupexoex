@@ -35,6 +35,7 @@ import OrderTracking from "./pages/order/OrderTracking"
 import MasterWalletSettings from "./pages/admin/MasterWalletSettings"
 import BalanceAdjust from "./pages/admin/BalanceAdjust"
 import WithdrawalsManagement from "./pages/admin/WithdrawalsManagement"
+import BlockedAccount from "./pages/BlockedAccount"
 
 const App = () => {
   const { token } = useAppContext()
@@ -65,6 +66,7 @@ const App = () => {
           <Route path="/order-tracking/:id" element={<OrderTracking />} />
           <Route path="/withdraw-tracking/:id" element={<WithdrawTracking />} />
           <Route path="/withdrawals" element={<UserWithdrawals />} />
+          <Route path="/blocked" element={<BlockedAccount />} />
         </Route>
 
 

@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 const USERS_WITH_BAL_ENDPOINT = "/api/v1/users/admin/users-with-balance";
 const USERS_FALLBACK_ENDPOINT = "/api/v1/users/admin/users";
 const USER_BALANCE_ENDPOINT = (id) => `/api/v1/users/admin/balance/${id}`;
+const BLOCK_TOGGLE_ENDPOINT = (id) => `/api/v1/users/admin/users/${id}/block`;
 
 const UserManagement = () => {
   const { axios, loading: appLoading } = useAppContext();
@@ -140,6 +141,7 @@ const UserManagement = () => {
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Available Balance</th>
                 <th className="px-4 py-3">User Created Time</th>
+                <th className="px-4 py-3">Blocked</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-600">
@@ -152,6 +154,44 @@ const UserManagement = () => {
                     <td className="px-4 py-3">{u?.phone || "--"}</td>
                     <td className="px-4 py-3">{fmtNum(balanceValue)}</td>
                     <td className="px-4 py-3">{u?.createdAt ? new Date(u.createdAt).toLocaleString() : "--"}</td>
+                    <td className="px-4 py-3">
+                      <label className="inline-flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!u?.blocked}
+                          onChange={async (e) => {
+                            const next = e.target.checked;
+                            const prev = !!u?.blocked;
+
+                            // optimistic UI update
+                            setUsers((list) =>
+                              list.map((x) => (x._id === u._id ? { ...x, blocked: next } : x))
+                            );
+
+                            try {
+                              const reason = next ? prompt("Reason (optional):", u?.blockedReason || "") : "";
+                              await axios.patch(BLOCK_TOGGLE_ENDPOINT(u._id), {
+                                blocked: next,
+                                reason
+                              });
+                              toast.success(next ? "User blocked" : "User unblocked");
+                            } catch (err) {
+                              // revert on failure
+                              setUsers((list) =>
+                                list.map((x) => (x._id === u._id ? { ...x, blocked: prev } : x))
+                              );
+                              const status = err?.response?.status;
+                              const msg = err?.response?.data?.message || err?.message || "Failed";
+                              toast.error(`${status ? `(${status}) ` : ""}${msg}`);
+                            }
+                          }}
+                          className="h-4 w-4 accent-blue-600"
+                        />
+                        <span className={`text-xs ${u?.blocked ? "text-red-400" : "text-green-400"}`}>
+                          {u?.blocked ? "Blocked" : "Active"}
+                        </span>
+                      </label>
+                    </td>
                   </tr>
                 );
               })}
