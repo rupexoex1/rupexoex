@@ -14,6 +14,9 @@ const dbConnect = async () => {
     await mongoose.connect(process.env.MONGODB_URI, {
       dbName: "rupexo",
       maxPoolSize: 10,
+      serverSelectionTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 45000, // 45 seconds
+      retryWrites: true,
     });
   } catch (error) {
     console.log(`Error is from dbConnect.js file: ${error}`);
