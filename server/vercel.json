@@ -1,13 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "src/index.js": {
-      "runtime": "nodejs20.x",
-      "regions": ["bom1"],
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
   "builds": [
     {
       "src": "src/index.js",
@@ -18,6 +10,9 @@
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "src/index.js" }
+    {
+      "src": "/(.*)",
+      "dest": "src/index.js"
+    }
   ]
 }
