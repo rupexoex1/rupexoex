@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { toast } from "react-hot-toast";
 
+/* =============== helpers =============== */
 const formatDateTime = (dt) => {
   if (!dt) return "--";
   try {
@@ -17,26 +18,40 @@ const formatINR = (n) =>
     Number(n || 0)
   );
 
+/* =============== small UI pieces =============== */
 const Step = ({ title, subtitle, active, done, danger = false, last = false }) => (
   <div className="relative pl-8">
-    {/* line */}
+    {/* vertical line */}
     {!last && (
       <div
-        className={`absolute left-[11px] top-5 h-full w-[2px] ${done ? (danger ? "bg-red-500" : "bg-emerald-500") : "bg-slate-700"
-          }`}
+        className={`absolute left-[11px] top-5 h-full w-[2px] ${
+          done ? (danger ? "bg-red-500" : "bg-emerald-500") : "bg-slate-700"
+        }`}
       />
     )}
 
     {/* dot */}
     <div
-      className={`absolute left-0 top-1.5 h-5 w-5 rounded-full border-2 ${done ? (danger ? "border-red-500 bg-red-500" : "border-emerald-500 bg-emerald-500") : "border-slate-500 bg-slate-900"
-        }`}
+      className={`absolute left-0 top-1.5 h-5 w-5 rounded-full border-2 ${
+        done
+          ? danger
+            ? "border-red-500 bg-red-500"
+            : "border-emerald-500 bg-emerald-500"
+          : "border-slate-500 bg-slate-900"
+      }`}
     />
 
     <div className="mb-6">
       <div
-        className={`font-semibold ${danger ? "text-red-400" : done ? "text-emerald-400" : active ? "text-white" : "text-slate-300"
-          }`}
+        className={`font-semibold ${
+          danger
+            ? "text-red-400"
+            : done
+            ? "text-emerald-400"
+            : active
+            ? "text-white"
+            : "text-slate-300"
+        }`}
       >
         {title}
       </div>
@@ -47,9 +62,19 @@ const Step = ({ title, subtitle, active, done, danger = false, last = false }) =
 
 const StatusPill = ({ status }) => {
   const map = {
-    pending: { text: "Pending", className: "bg-amber-500/15 text-amber-300 border border-amber-400/30" },
-    confirmed: { text: "Confirmed", className: "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30" },
-    failed: { text: "Failed", className: "bg-red-500/15 text-red-300 border border-red-400/30" },
+    pending: {
+      text: "Pending",
+      className: "bg-amber-500/15 text-amber-300 border border-amber-400/30",
+    },
+    confirmed: {
+      text: "Confirmed",
+      className:
+        "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30",
+    },
+    failed: {
+      text: "Failed",
+      className: "bg-red-500/15 text-red-300 border border-red-400/30",
+    },
   };
   const s = map[status] || map.pending;
   return (
@@ -60,20 +85,21 @@ const StatusPill = ({ status }) => {
   );
 };
 
-const CopyButton = ({ text, label = "Copy" }) => {
-  return (
-    <button
-      onClick={() => {
-        if (!text) return;
-        navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
-      }}
-      className="text-xs px-2 py-1 rounded-md border border-slate-600 hover:border-slate-400 text-slate-200"
-    >
-      {label}
-    </button>
-  );
-};
+const CopyButton = ({ text, label = "Copy" }) => (
+  <button
+    onClick={() => {
+      if (!text) return;
+      navigator.clipboard.writeText(text);
+      toast.success("Copied to clipboard");
+    }}
+    disabled={!text}
+    className={`text-xs px-2 py-1 rounded-md border border-slate-600 text-slate-200 ${
+      !text ? "opacity-50 cursor-not-allowed" : "hover:border-slate-400"
+    }`}
+  >
+    {label}
+  </button>
+);
 
 const Skeleton = () => (
   <div className="animate-pulse space-y-6">
@@ -85,6 +111,7 @@ const Skeleton = () => (
   </div>
 );
 
+/* =============== page =============== */
 const OrderTracking = () => {
   const { id } = useParams();
   const { axios } = useAppContext();
@@ -105,14 +132,12 @@ const OrderTracking = () => {
         setRefreshing(true);
       }
       const res = await axios.get(`/api/v1/users/orders/${id}`);
-      if (res.data?.success) {
-        setOrder(res.data.order);
-      } else {
-        setError(res.data?.message || "Failed to fetch order");
-      }
+      setOrder(res.data?.order || null);
     } catch (err) {
-      console.error(err);
-      setError("Failed to fetch order");
+      const status = err?.response?.status;
+      if (status === 404) setError("Order not found.");
+      else if (status === 401) setError("Session expired. Please login again.");
+      else setError(err?.response?.data?.message || "Failed to fetch order");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -130,8 +155,8 @@ const OrderTracking = () => {
     if (!order) return;
     if (order.status === "pending") {
       pollRef.current = setInterval(() => fetchOrder(true), 7000);
-    } else {
-      if (pollRef.current) clearInterval(pollRef.current);
+    } else if (pollRef.current) {
+      clearInterval(pollRef.current);
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -140,10 +165,6 @@ const OrderTracking = () => {
   }, [order?.status]);
 
   const stepState = useMemo(() => {
-    // Steps:
-    // 1. Order Placed
-    // 2. Processing (Pending)
-    // 3. Completed (Confirmed) OR Failed
     const status = order?.status || "pending";
     const isFailed = status === "failed";
     return {
@@ -157,8 +178,8 @@ const OrderTracking = () => {
     order?.status === "confirmed"
       ? "from-emerald-600/25 to-emerald-400/10 border-emerald-500/30"
       : order?.status === "failed"
-        ? "from-red-600/25 to-red-400/10 border-red-500/30"
-        : "from-amber-600/25 to-amber-400/10 border-amber-500/30";
+      ? "from-red-600/25 to-red-400/10 border-red-500/30"
+      : "from-amber-600/25 to-amber-400/10 border-amber-500/30";
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#0b1220] text-slate-100 px-4 md:px-8 py-6">
@@ -169,17 +190,20 @@ const OrderTracking = () => {
         <div>
           <div className="text-sm text-slate-300/80">Order#</div>
           <div className="flex items-center gap-2 mt-1">
-            {/* 👇 yahan short id (last 6) show karo */}
+            {/* short id (last 6) */}
             <code className="text-base md:text-lg tracking-wide bg-black/30 px-2.5 py-1.5 rounded-md">
               {(order?._id || id || "").slice(-6) || "--"}
             </code>
-
-            {/* 👇 is button se abhi bhi FULL ID copy hogi (good UX) */}
+            {/* copy full id */}
             <CopyButton text={order?._id || id} label="Copy Full ID" />
           </div>
           <div className="mt-3 flex items-center gap-3">
             <StatusPill status={order?.status || "pending"} />
-            {refreshing && <span className="text-xs text-slate-400 animate-pulse">Refreshing…</span>}
+            {refreshing && (
+              <span className="text-xs text-slate-400 animate-pulse">
+                Refreshing…
+              </span>
+            )}
           </div>
         </div>
 
@@ -222,7 +246,10 @@ const OrderTracking = () => {
                 Created: {formatDateTime(order?.createdAt)}{" "}
                 {order?.completedAt && (
                   <>
-                    • Completed: <span className="text-slate-300">{formatDateTime(order.completedAt)}</span>
+                    • Completed:{" "}
+                    <span className="text-slate-300">
+                      {formatDateTime(order.completedAt)}
+                    </span>
                   </>
                 )}
               </div>
@@ -236,13 +263,19 @@ const OrderTracking = () => {
                 done={stepState.step1.done}
               />
               <Step
-                title={order?.status === "pending" ? "Processing" : order?.status === "failed" ? "Processing halted" : "Processing complete"}
+                title={
+                  order?.status === "pending"
+                    ? "Processing"
+                    : order?.status === "failed"
+                    ? "Processing halted"
+                    : "Processing complete"
+                }
                 subtitle={
                   order?.status === "pending"
                     ? "Awaiting admin action"
                     : order?.status === "failed"
-                      ? "This order was marked as failed"
-                      : "Admin has confirmed your order"
+                    ? "This order was marked as failed"
+                    : "Admin has confirmed your order"
                 }
                 active={order?.status === "pending"}
                 done={stepState.step2.done}
@@ -269,11 +302,15 @@ const OrderTracking = () => {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">USDT</span>
-                  <span className="font-semibold text-slate-100">USDT {order?.amount}</span>
+                  <span className="font-semibold text-slate-100">
+                    USDT {order?.amount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">INR (calculated)</span>
-                  <span className="font-semibold text-slate-100">{formatINR(order?.inrAmount)}</span>
+                  <span className="font-semibold text-slate-100">
+                    {formatINR(order?.inrAmount)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Plan</span>
@@ -292,7 +329,9 @@ const OrderTracking = () => {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-slate-400">Account Holder</span>
                   <span className="font-medium text-right">
-                    {order?.bankAccount?.accountHolder || order?.bankAccount?.holderName || "N/A"}
+                    {order?.bankAccount?.accountHolder ||
+                      order?.bankAccount?.holderName ||
+                      "N/A"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
@@ -303,15 +342,22 @@ const OrderTracking = () => {
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-slate-400">IFSC</span>
-                  <span className="font-medium text-right">{order?.bankAccount?.ifsc || "N/A"}</span>
+                  <span className="font-medium text-right">
+                    {order?.bankAccount?.ifsc || "N/A"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-slate-400">Bank</span>
-                  <span className="font-medium text-right">{order?.bankAccount?.bankName || "N/A"}</span>
+                  <span className="font-medium text-right">
+                    {order?.bankAccount?.bankName || "N/A"}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">
-                  <CopyButton text={order?.bankAccount?.accountNumber} label="Copy A/C No" />
+                  <CopyButton
+                    text={order?.bankAccount?.accountNumber}
+                    label="Copy A/C No"
+                  />
                   <CopyButton text={order?.bankAccount?.ifsc} label="Copy IFSC" />
                 </div>
               </div>
@@ -322,11 +368,15 @@ const OrderTracking = () => {
               <div className="space-y-1 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Created</span>
-                  <span className="font-medium">{formatDateTime(order?.createdAt)}</span>
+                  <span className="font-medium">
+                    {formatDateTime(order?.createdAt)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Completed</span>
-                  <span className="font-medium">{formatDateTime(order?.completedAt)}</span>
+                  <span className="font-medium">
+                    {formatDateTime(order?.completedAt)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -340,10 +390,11 @@ const OrderTracking = () => {
               </button>
               <button
                 onClick={() => {
-                  const text = `Order ${order?._id}\nStatus: ${order?.status}\nAmount: USDT ${order?.amount} (${formatINR(
-                    order?.inrAmount
-                  )})\nCreated: ${formatDateTime(order?.createdAt)}\n${order?.completedAt ? "Completed: " + formatDateTime(order.completedAt) : ""
-                    }`;
+                  const text = `Order ${order?._id}
+Status: ${order?.status}
+Amount: USDT ${order?.amount} (${formatINR(order?.inrAmount)})
+Created: ${formatDateTime(order?.createdAt)}
+${order?.completedAt ? "Completed: " + formatDateTime(order.completedAt) : ""}`;
                   navigator.clipboard.writeText(text);
                   toast.success("Order summary copied");
                 }}
