@@ -205,6 +205,7 @@ export const placeOrder = async (req, res) => {
   let createdOrder = null;
 
   try {
+    await dbConnect();
     const { amount, inrAmount, bankAccount, plan, price } = req.body;
     const userId = req.user._id;
 
@@ -355,6 +356,7 @@ export const placeOrder = async (req, res) => {
 ========================= */
 export const getUserOrders = async (req, res) => {
   try {
+    await dbConnect();
     const userId = req.user._id;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -384,6 +386,7 @@ export const getUserOrders = async (req, res) => {
 
 export const getOrderById = async (req, res) => {
   try {
+    await dbConnect();
     const order = await Order.findById(req.params.id);
     if (!order)
       return res
@@ -401,6 +404,7 @@ export const getOrderById = async (req, res) => {
 // GET /admin/settings
 export const getSettings = async (req, res) => {
   try {
+    await dbConnect();
     let setting = await Setting.findOne({ key: "RATES" });
     if (!setting) {
       setting = await Setting.create({ key: "RATES" });
