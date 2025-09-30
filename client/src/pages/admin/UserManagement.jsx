@@ -1,115 +1,102 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAppContext } from "../../context/AppContext";
 import { toast } from "react-hot-toast";
 
 const USERS_WITH_BAL_ENDPOINT = "/api/v1/users/admin/users-with-balance";
 const USERS_FALLBACK_ENDPOINT = "/api/v1/users/admin/users";
-const USER_BALANCE_ENDPOINT = (id) => `/api/v1/users/admin/balance/${id}`;
 const BLOCK_TOGGLE_ENDPOINT = (id) => `/api/v1/users/admin/users/${id}/block`;
 
-const UserManagement = () => {
-  const { axios, loading: appLoading } = useAppContext();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
+export default function UserManagement() {
+  const { axios } = useAppContext();
 
+  const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
   useEffect(() => {
-    const id = setTimeout(() => setDebounced(search.trim().toLowerCase()), 300);
-    return () => clearTimeout(id);
+    const t = setTimeout(() => setQ(search.trim()), 300);
+    return () => clearTimeout(t);
   }, [search]);
 
-  const fmtNum = (n) => {
-    if (n === null || n === undefined || n === "") return "--";
-    const num = Number(n);
-    if (!Number.isFinite(num)) return String(n);
-    return new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
-  };
+  const fmt = (n) =>
+    n === undefined || n === null
+      ? "—"
+      : new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+          Number(n)
+        );
 
-  const enrichBalances = async (list) => {
-    // limited concurrency to avoid hammering server
-    const CONCURRENCY = 5;
-    const queue = [...list];
-    const out = [];
-    const run = async () => {
-      while (queue.length) {
-        const u = queue.shift();
-        if (!u?._id) { out.push(u); continue; }
-        try {
-          const r = await axios.get(USER_BALANCE_ENDPOINT(u._id));
-          out.push({ ...u, availableBalance: r?.data?.balance ?? null });
-        } catch {
-          out.push(u);
-        }
-      }
-    };
-    await Promise.all(new Array(CONCURRENCY).fill(0).map(run));
-    return out;
-  };
-
-  const fetchUsers = async () => {
+  const load = async (reset = false) => {
     try {
       setLoading(true);
+      const p = reset ? 1 : page;
 
-      // Try batch endpoint first
+      // try users-with-balance
+      let res;
       try {
-        const res = await axios.get(USERS_WITH_BAL_ENDPOINT);
-        if (res?.data?.success && Array.isArray(res.data.users)) {
-          setUsers(res.data.users);
-          return;
-        }
-      } catch (err) {
-        const status = err?.response?.status;
-        if (status && status !== 404) {
-          // Real error except 404; show it
-          toast.error(`(${status}) ${err?.response?.data?.message || err.message}`);
-        }
-        // if 404, we fall through to fallback below
+        res = await axios.get(USERS_WITH_BAL_ENDPOINT, { params: { page: p, limit, q } });
+      } catch (e) {
+        if (e?.response?.status !== 404) throw e;
+        // fallback: plain users list (may not include balance)
+        res = await axios.get(USERS_FALLBACK_ENDPOINT, { params: { page: p, limit, q } });
       }
 
-      // Fallback: get users, then per-user balance
-      const res2 = await axios.get(USERS_FALLBACK_ENDPOINT);
-      if (res2?.data?.success && Array.isArray(res2.data.users)) {
-        const baseUsers = res2.data.users;
-        const enriched = await enrichBalances(baseUsers);
-        setUsers(enriched);
-      } else {
-        toast.error(res2?.data?.message || "Failed to fetch users");
-      }
+      const payload = res?.data;
+      const list =
+        payload?.users ||
+        payload?.items ||
+        []; // keep it robust
+
+      setRows((prev) => (reset ? list : [...prev, ...list]));
+      setTotal(Number(payload?.total || (reset ? list.length : prev.length + list.length)));
+      setHasMore(Boolean(payload?.hasMore));
+      setPage(p + 1);
     } catch (err) {
       const status = err?.response?.status;
       const msg = err?.response?.data?.message || err?.message || "Failed to fetch users";
-      console.error("fetchUsers error:", { status, data: err?.response?.data, err });
       toast.error(`${status ? `(${status}) ` : ""}${msg}`);
     } finally {
       setLoading(false);
     }
   };
 
+  // first load + whenever q changes -> reset
   useEffect(() => {
-    if (!appLoading) fetchUsers();
+    setRows([]);
+    setPage(1);
+    setHasMore(true);
+    load(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appLoading]);
+  }, [q]);
 
-  const filtered = useMemo(() => {
-    if (!debounced) return users;
-    const match = (v) => String(v ?? "").toLowerCase().includes(debounced);
-    return users.filter((u) => {
-      const created = u?.createdAt ? new Date(u.createdAt).toLocaleString() : "";
-      const bal = u?.availableBalance ?? u?.balance ?? u?.walletBalance ?? u?.funds ?? "";
-      return match(u?.email) || match(u?.phone) || match(bal) || match(created);
-    });
-  }, [users, debounced]);
+  const toggleBlock = async (u, next) => {
+    const prev = !!u?.blocked;
+    // optimistic
+    setRows((L) => L.map((x) => (x._id === u._id ? { ...x, blocked: next } : x)));
+    try {
+      const reason = next ? prompt("Reason (optional):", u?.blockedReason || "") : "";
+      await axios.patch(BLOCK_TOGGLE_ENDPOINT(u._id), { blocked: next, reason });
+      toast.success(next ? "User blocked" : "User unblocked");
+    } catch (e) {
+      setRows((L) => L.map((x) => (x._id === u._id ? { ...x, blocked: prev } : x)));
+      toast.error(e?.response?.data?.message || "Failed");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white px-4 py-6">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h1 className="text-xl font-bold">👥 User Management</h1>
+
         <div className="flex-1 min-w-[240px] max-w-md relative">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search: email, phone, balance, created time…"
+            placeholder="Search email / phone …"
             className="w-full rounded-md bg-[#1e293b] border border-[#334155] text-sm px-3 py-2 outline-none focus:border-blue-500"
           />
           {search && (
@@ -122,92 +109,65 @@ const UserManagement = () => {
             </button>
           )}
         </div>
-        <button onClick={fetchUsers} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
+
+        <button onClick={() => load(true)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
           Refresh
         </button>
       </div>
 
-      <div className="text-xs opacity-70 mb-2">Showing {filtered.length} of {users.length}</div>
+      <div className="text-xs opacity-70 mb-2">Showing {rows.length} of {total || rows.length}</div>
 
-      {loading ? (
-        <div className="text-center">Loading users...</div>
-      ) : (
-        <div className="overflow-x-auto bg-[#1e293b] rounded-lg shadow-lg">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-[#334155] text-white uppercase text-xs">
-              <tr>
-                <th className="px-4 py-3">#</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Available Balance</th>
-                <th className="px-4 py-3">User Created Time</th>
-                <th className="px-4 py-3">Blocked</th>
+      <div className="overflow-x-auto bg-[#1e293b] rounded-lg shadow-lg">
+        <table className="min-w-full text-sm text-left">
+          <thead className="bg-[#334155] text-white uppercase text-xs">
+            <tr>
+              <th className="px-4 py-3">#</th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Phone</th>
+              <th className="px-4 py-3">Available Balance</th>
+              <th className="px-4 py-3">Created</th>
+              <th className="px-4 py-3">Blocked</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-600">
+            {rows.map((u, i) => (
+              <tr key={u._id || `${u.email}-${i}`}>
+                <td className="px-4 py-3">{i + 1}</td>
+                <td className="px-4 py-3 break-all">{u.email || "—"}</td>
+                <td className="px-4 py-3">{u.phone || "—"}</td>
+                <td className="px-4 py-3">{fmt(u.availableBalance ?? u.balance)}</td>
+                <td className="px-4 py-3">{u.createdAt ? new Date(u.createdAt).toLocaleString() : "—"}</td>
+                <td className="px-4 py-3">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-blue-600"
+                      checked={!!u.blocked}
+                      onChange={(e) => toggleBlock(u, e.target.checked)}
+                    />
+                    <span className={`text-xs ${u.blocked ? "text-red-400" : "text-green-400"}`}>
+                      {u.blocked ? "Blocked" : "Active"}
+                    </span>
+                  </label>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-600">
-              {filtered.map((u, idx) => {
-                const balanceValue = u?.availableBalance ?? u?.balance ?? u?.walletBalance ?? u?.funds;
-                return (
-                  <tr key={u?._id || u?.email || idx} className="align-top">
-                    <td className="px-4 py-3">{idx + 1}</td>
-                    <td className="px-4 py-3 break-all">{u?.email || "--"}</td>
-                    <td className="px-4 py-3">{u?.phone || "--"}</td>
-                    <td className="px-4 py-3">{fmtNum(balanceValue)}</td>
-                    <td className="px-4 py-3">{u?.createdAt ? new Date(u.createdAt).toLocaleString() : "--"}</td>
-                    <td className="px-4 py-3">
-                      <label className="inline-flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!u?.blocked}
-                          onChange={async (e) => {
-                            const next = e.target.checked;
-                            const prev = !!u?.blocked;
+            ))}
+            {!loading && rows.length === 0 && (
+              <tr><td className="px-4 py-6 text-center text-sm opacity-70" colSpan={6}>No users.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-                            // optimistic UI update
-                            setUsers((list) =>
-                              list.map((x) => (x._id === u._id ? { ...x, blocked: next } : x))
-                            );
-
-                            try {
-                              const reason = next ? prompt("Reason (optional):", u?.blockedReason || "") : "";
-                              await axios.patch(BLOCK_TOGGLE_ENDPOINT(u._id), {
-                                blocked: next,
-                                reason
-                              });
-                              toast.success(next ? "User blocked" : "User unblocked");
-                            } catch (err) {
-                              // revert on failure
-                              setUsers((list) =>
-                                list.map((x) => (x._id === u._id ? { ...x, blocked: prev } : x))
-                              );
-                              const status = err?.response?.status;
-                              const msg = err?.response?.data?.message || err?.message || "Failed";
-                              toast.error(`${status ? `(${status}) ` : ""}${msg}`);
-                            }
-                          }}
-                          className="h-4 w-4 accent-blue-600"
-                        />
-                        <span className={`text-xs ${u?.blocked ? "text-red-400" : "text-green-400"}`}>
-                          {u?.blocked ? "Blocked" : "Active"}
-                        </span>
-                      </label>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!loading && filtered.length === 0 && (
-                <tr>
-                  <td className="px-4 py-6 text-center text-sm opacity-70" colSpan={5}>
-                    No matching users.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="mt-3 flex items-center justify-center">
+        {hasMore ? (
+          <button disabled={loading} onClick={() => load(false)} className="px-4 py-2 bg-gray-700 rounded text-sm">
+            {loading ? "Loading…" : "Load more"}
+          </button>
+        ) : (
+          <div className="text-xs opacity-60">All loaded</div>
+        )}
+      </div>
     </div>
   );
-};
-
-export default UserManagement;
+}
