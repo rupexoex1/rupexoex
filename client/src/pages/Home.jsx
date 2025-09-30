@@ -6,7 +6,7 @@ import twoMobiles from '../assets/static/twoMobiles.png'
 import ContainerOne from '../components/containers/ContainerOne'
 import ContainerTwo from '../components/containers/ContainerTwo'
 import ContainerThree from '../components/containers/ContainerThree'
-import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
+// import LiveCryptoCoins from '../components/liveCryptoCoins/LiveCryptoCoins'
 import USDTPriceCards from '../components/containers/USDTPriceCards'
 import { useAppContext } from '../context/AppContext'
 import { useEffect, useState } from 'react'
@@ -133,7 +133,7 @@ const Home = () => {
       </div>
 
       {/* Live Crypto Coins */}
-      <LiveCryptoCoins />
+      {/* <LiveCryptoCoins /> */}
     </div>
   )
 }
