@@ -16,7 +16,7 @@ const isManual =
  */
 export const getAllTransactions = async (req, res) => {
   try {
-    await dbConnect();
+    
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 200);
     const skip = (page - 1) * limit;
@@ -54,7 +54,7 @@ export const getAllTransactions = async (req, res) => {
  */
 export const getAdminStats = async (_req, res) => {
   try {
-    await dbConnect();
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -112,7 +112,7 @@ export const updateOrderStatus = async (req, res) => {
   }
 
   try {
-    await dbConnect();  
+      
     const order = await Order.findById(id);
     if (!order) {
       return res
@@ -177,7 +177,7 @@ export const updateOrderStatus = async (req, res) => {
  */
 export const getAllOrders = async (req, res) => {
   try {
-    await dbConnect();
+    
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 200);
     const skip = (page - 1) * limit;
@@ -217,7 +217,7 @@ export const getAllOrders = async (req, res) => {
  */
 export const adminListWithdrawals = async (req, res) => {
   try {
-    await dbConnect();
+    
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 100, 200);
     const skip = (page - 1) * limit;
@@ -253,7 +253,7 @@ export const adminListWithdrawals = async (req, res) => {
  */
 export const adminUpdateWithdrawalStatus = async (req, res) => {
   try {
-    await dbConnect();
+    
     const { id } = req.params;
     const { status } = req.body; // "approved" | "rejected"
 
@@ -339,7 +339,7 @@ const computeAvailableBalance = async (userId) => {
 // GET /api/v1/users/admin/users-with-balance
 export const adminListUsersWithBalance = async (req, res) => {
   try {
-    await dbConnect();
+    
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const skip = (page - 1) * limit;
