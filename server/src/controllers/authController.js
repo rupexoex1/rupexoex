@@ -1,4 +1,3 @@
-import dbConnect from "../dbConnect.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
@@ -171,7 +170,6 @@ export const resendOtp = async (req, res) => {
 export const login = async (req, res) => {
   try {
     
-    await dbConnect();
     // 0) Basic input check (so server never crashes on empty fields)
     const { email, password } = req.body || {};
     if (!email || !password) {
