@@ -1,10 +1,9 @@
 // controllers/ratesController.js
-import dbConnect from "./dbConnect.js";
 import Setting from "../models/settingModel.js";
 
 export const getPublicRates = async (req, res) => {
   try {
-    await dbConnect();
+    
     const doc = await Setting.getRates();
     return res.json({
       success: true,
@@ -23,7 +22,7 @@ export const getPublicRates = async (req, res) => {
 // NOTE: Secure with admin middleware where you mount the route
 export const updateRates = async (req, res) => {
   try {
-    await dbConnect();
+    
     const { basic, vip, basicMin, basicMax, vipMin } = req.body;
 
     if (basic == null || vip == null) {
