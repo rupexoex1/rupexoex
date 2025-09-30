@@ -5,7 +5,7 @@ import Home from "./pages/Home";
 import Exchange from "./pages/Exchange";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
-import Coin from "./components/liveCryptoCoins/Coin";
+// import Coin from "./components/liveCryptoCoins/Coin";
 import Register from "./components/admin/Register";
 import Login from "./components/admin/Login";
 import VerifyOtp from "./components/admin/VerifyOtp";
@@ -53,7 +53,7 @@ const App = () => {
           <Route path="/exchange" element={token ? <Exchange /> : <Login />} />
           <Route path="/orders" element={token ? <Orders /> : <Login />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/coin/:coinId" element={<Coin />} />
+          {/* <Route path="/coin/:coinId" element={<Coin />} /> */}
           <Route path="/register" element={<Register />} />
           <Route path="/verify-otp" element={<VerifyOtp />} />
           <Route path="/login" element={<Login />} />
