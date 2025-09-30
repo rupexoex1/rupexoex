@@ -1,3 +1,4 @@
+import dbConnect from "./dbConnect.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
@@ -12,6 +13,7 @@ const JWT_SIGN = (user) =>
 
 export const register = async (req, res) => {
   try {
+     await dbConnect();
     const { name, email, phone, password, role } = req.body;
     if (!name || !email || !phone || !password || !role) {
       return res
@@ -65,6 +67,8 @@ export const register = async (req, res) => {
 
 export const verifyOtp = async (req, res) => {
   try {
+    await dbConnect();
+
     const { email, otp } = req.body;
     const nEmail = norm(email);
     const otpStr = String(otp);
@@ -127,6 +131,7 @@ export const verifyOtp = async (req, res) => {
 
 export const resendOtp = async (req, res) => {
   try {
+    await dbConnect();
     const { email } = req.body;
     const nEmail = norm(email);
 
@@ -165,6 +170,7 @@ export const resendOtp = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
+    await dbConnect();
     // 0) Basic input check (so server never crashes on empty fields)
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -230,6 +236,7 @@ export const login = async (req, res) => {
 
 export const forgotPassword = async (req, res) => {
   try {
+    await dbConnect();
     const { email } = req.body;
     const nEmail = norm(email);
 
