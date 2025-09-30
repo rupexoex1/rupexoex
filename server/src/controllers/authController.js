@@ -1,4 +1,3 @@
-import dbConnect from "./dbConnect.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import sendEmail from "../utils/sendEmail.js";
