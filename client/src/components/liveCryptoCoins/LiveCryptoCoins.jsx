@@ -54,7 +54,7 @@ const LiveCryptoCoins = () => {
         </div>
         {
           displayCoin.length > 0 ? (
-            displayCoin.slice(0, 20).map((item, index) => (
+            displayCoin.slice(0, 10).map((item, index) => (
               <Link to={`/coin/${item.id}`} className="table-layout" key={index}>
                 <p>{item.market_cap_rank}</p>
                 <div>
