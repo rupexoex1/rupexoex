@@ -11,7 +11,10 @@ const dbConnect = async () => {
     mongoose.connection.on("error", (err) => {
       console.log("❌ Database connection error: " + err);
     });
-    await mongoose.connect(process.env.MONGODB_URI, { dbName: "rupexo" });
+    await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: "rupexo",
+      maxPoolSize: 10,
+    });
   } catch (error) {
     console.log(`Error is from dbConnect.js file: ${error}`);
   }
