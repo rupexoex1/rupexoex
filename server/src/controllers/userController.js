@@ -1,4 +1,3 @@
-import dbConnect from "./dbConnect.js";
 import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import Transaction from "../models/transactionModel.js";
@@ -88,7 +87,7 @@ export const checkUSDTDeposit = async (req, res) => {
 ========================= */
 export const getUserTransactions = async (req, res) => {
   try {
-    await dbConnect();
+    
     const userId = req.user.id;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -121,7 +120,7 @@ export const getUserTransactions = async (req, res) => {
 
 export const getVirtualBalance = async (req, res) => {
   try {
-    await dbConnect();
+    
     const userId = req.user.id;
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res
@@ -144,7 +143,7 @@ export const getVirtualBalance = async (req, res) => {
    Bank Accounts
 ========================= */
 export const addBankAccount = async (req, res) => {
-  await dbConnect();
+  
   const { accountNumber, ifsc, holderName } = req.body;
   const userId = req.user._id;
 
@@ -159,7 +158,7 @@ export const addBankAccount = async (req, res) => {
 };
 
 export const getBankAccounts = async (req, res) => {
-  await dbConnect();
+  
   const accounts = await BankAccount.find({ userId: req.user._id }).sort({
     createdAt: -1,
   });
@@ -167,14 +166,14 @@ export const getBankAccounts = async (req, res) => {
 };
 
 export const deleteBankAccount = async (req, res) => {
-  await dbConnect();
+  
   const { id } = req.params;
   await BankAccount.deleteOne({ _id: id, userId: req.user._id });
   res.json({ success: true });
 };
 
 export const selectBankAccount = async (req, res) => {
-  await dbConnect();
+  
   const userId = req.user._id;
   const { id } = req.params;
 
@@ -185,7 +184,7 @@ export const selectBankAccount = async (req, res) => {
 };
 
 export const getSelectedBankAccount = async (req, res) => {
-  await dbConnect();
+  
   const selected = await BankAccount.findOne({
     userId: req.user._id,
     isSelected: true,
@@ -205,7 +204,7 @@ export const placeOrder = async (req, res) => {
   let createdOrder = null;
 
   try {
-    await dbConnect();
+    
     const { amount, inrAmount, bankAccount, plan, price } = req.body;
     const userId = req.user._id;
 
@@ -356,7 +355,7 @@ export const placeOrder = async (req, res) => {
 ========================= */
 export const getUserOrders = async (req, res) => {
   try {
-    await dbConnect();
+    
     const userId = req.user._id;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -386,7 +385,7 @@ export const getUserOrders = async (req, res) => {
 
 export const getOrderById = async (req, res) => {
   try {
-    await dbConnect();
+    
     const order = await Order.findById(req.params.id);
     if (!order)
       return res
@@ -404,7 +403,7 @@ export const getOrderById = async (req, res) => {
 // GET /admin/settings
 export const getSettings = async (req, res) => {
   try {
-    await dbConnect();
+    
     let setting = await Setting.findOne({ key: "RATES" });
     if (!setting) {
       setting = await Setting.create({ key: "RATES" });
@@ -426,7 +425,7 @@ export const getSettings = async (req, res) => {
 // PUT /admin/settings
 export const updateSettings = async (req, res) => {
   try {
-    await dbConnect();
+    
     const { masterWalletAddress } = req.body;
     if (!masterWalletAddress) {
       return res
@@ -460,7 +459,7 @@ export const updateSettings = async (req, res) => {
 ========================= */
 export const adminAdjustUserBalance = async (req, res) => {
   try {
-    await dbConnect();
+    
     const { id } = req.params; // user id
     const { amount, type, reason } = req.body;
 
@@ -501,7 +500,7 @@ export const createWithdrawal = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    await dbConnect();
+    
     const userId = req.user?.id || req.user?._id;
     const { address, amount, network = "TRC20" } = req.body;
 
@@ -583,7 +582,7 @@ export const createWithdrawal = async (req, res) => {
 // User's own withdrawals
 export const getMyWithdrawals = async (req, res) => {
   try {
-    await dbConnect();
+    
     const userId = req.user?.id || req.user?._id;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 50, 100);
@@ -615,7 +614,7 @@ export const getMyWithdrawals = async (req, res) => {
 // Add this in userController.js (anywhere below the imports)
 export const getWithdrawalById = async (req, res) => {
   try {
-    await dbConnect();
+    
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -639,7 +638,7 @@ export const getWithdrawalById = async (req, res) => {
 
 export const adminGetUserBalance = async (req, res) => {
   try {
-    await dbConnect();
+    
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
