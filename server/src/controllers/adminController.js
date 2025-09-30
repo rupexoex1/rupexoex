@@ -1,5 +1,4 @@
 // server/src/controllers/adminController.js
-import dbConnect from "./dbConnect.js";
 import mongoose from "mongoose";
 import Transaction from "../models/transactionModel.js";
 import User from "../models/userModel.js";
