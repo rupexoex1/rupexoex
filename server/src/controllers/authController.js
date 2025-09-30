@@ -165,7 +165,7 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
     const nEmail = norm(email);
 
-    const user = await User.findOne({ email: nEmail });
+    const user = await User.findOne({ email: nEmail }).select('+password');
     if (!user) {
       return res
         .status(400)
