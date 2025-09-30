@@ -10,7 +10,15 @@ const statusBadge = (status) => {
   return `${base} bg-yellow-500`;
 };
 
-const ConfirmModal = ({ open, variant = "success", title, message, onConfirm, onCancel, processing = false }) => {
+const ConfirmModal = ({
+  open,
+  variant = "success",
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  processing = false,
+}) => {
   if (!open) return null;
   const v =
     variant === "danger"
@@ -39,36 +47,67 @@ const ConfirmModal = ({ open, variant = "success", title, message, onConfirm, on
 
 export default function WithdrawalsManagement() {
   const { axios } = useAppContext();
+
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
+
   const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
-
-  const [modal, setModal] = useState({ open: false, row: null, status: null });
-
+  const [q, setQ] = useState("");
   useEffect(() => {
-    const id = setTimeout(() => setDebounced(search.trim().toLowerCase()), 300);
+    const id = setTimeout(() => setQ(search.trim().toLowerCase()), 300);
     return () => clearTimeout(id);
   }, [search]);
 
-  const fetchRows = async () => {
+  const [modal, setModal] = useState({ open: false, row: null, status: null });
+
+  // paginated loader with graceful fallback (if backend doesn't paginate)
+  const load = async (reset = false) => {
     try {
       setLoading(true);
-      const res = await axios.get("/api/v1/users/admin/withdrawals");
-      if (res.data?.success) setRows(res.data.withdrawals || []);
-      else toast.error(res.data?.message || "Failed to fetch withdrawals");
+      const p = reset ? 1 : page;
+
+      const res = await axios.get("/api/v1/users/admin/withdrawals", {
+        params: { page: p, limit, q }, // backend may ignore; we fallback below
+      });
+      const payload = res?.data || {};
+      // support both new {items,total,hasMore} and old {withdrawals}
+      const list = payload.items || payload.withdrawals || [];
+      const supportsPaging =
+        typeof payload.total === "number" || typeof payload.hasMore === "boolean";
+
+      setRows((prev) => (reset ? list : [...prev, ...list]));
+
+      if (supportsPaging) {
+        setTotal(payload.total ?? (reset ? list.length : list.length + (rows?.length || 0)));
+        setHasMore(Boolean(payload.hasMore));
+      } else {
+        // no pagination from server → treat as single page
+        setTotal(list.length);
+        setHasMore(false);
+      }
+
+      setPage(p + 1);
     } catch (e) {
-      console.error(e);
-      toast.error("Failed to fetch withdrawals");
+      const msg = e?.response?.data?.message || e?.message || "Failed to fetch withdrawals";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  // first load + on search change
   useEffect(() => {
-    fetchRows();
-  }, []);
+    setRows([]);
+    setPage(1);
+    setHasMore(true);
+    load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   const updateStatus = async (id, newStatus) => {
     try {
@@ -76,7 +115,9 @@ export default function WithdrawalsManagement() {
       const res = await axios.put(`/api/v1/users/admin/withdrawals/${id}`, { status: newStatus });
       if (res.data?.success) {
         toast.success(`Withdrawal ${newStatus}`);
-        setRows((prev) => prev.map((r) => (r._id === id ? { ...r, status: newStatus, completedAt: new Date().toISOString() } : r)));
+        setRows((prev) =>
+          prev.map((r) => (r._id === id ? { ...r, status: newStatus, completedAt: new Date().toISOString() } : r))
+        );
       } else {
         toast.error(res.data?.message || "Failed to update");
       }
@@ -88,18 +129,7 @@ export default function WithdrawalsManagement() {
     }
   };
 
-  const filtered = useMemo(() => {
-    if (!debounced) return rows;
-    const match = (v) => String(v ?? "").toLowerCase().includes(debounced);
-    return rows.filter((r) =>
-      match(r?._id) ||
-      match(r?.address) ||
-      match(r?.status) ||
-      match(r?.amount) ||
-      match(r?.createdAt && new Date(r.createdAt).toLocaleString())
-    );
-  }, [rows, debounced]);
-
+  // helpers (used → no ESLint warnings)
   const openModal = (row, status) => setModal({ open: true, row, status });
   const closeModal = () => setModal({ open: false, row: null, status: null });
   const confirmModal = async () => {
@@ -107,6 +137,19 @@ export default function WithdrawalsManagement() {
     await updateStatus(modal.row._id, modal.status);
     closeModal();
   };
+
+  const filtered = useMemo(() => {
+    if (!q) return rows;
+    const match = (v) => String(v ?? "").toLowerCase().includes(q);
+    return rows.filter(
+      (r) =>
+        match(r?._id) ||
+        match(r?.address) ||
+        match(r?.status) ||
+        match(r?.amount) ||
+        match(r?.createdAt && new Date(r.createdAt).toLocaleString())
+    );
+  }, [rows, q]);
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white px-4 py-6">
@@ -125,12 +168,14 @@ export default function WithdrawalsManagement() {
             </button>
           )}
         </div>
-        <button onClick={fetchRows} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">Refresh</button>
+        <button onClick={() => load(true)} className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
+          Refresh
+        </button>
       </div>
 
-      <div className="text-xs opacity-70 mb-2">Showing {filtered.length} of {rows.length}</div>
+      <div className="text-xs opacity-70 mb-2">Showing {filtered.length} of {total || rows.length}</div>
 
-      {loading ? (
+      {loading && rows.length === 0 ? (
         <div className="text-center">Loading…</div>
       ) : (
         <div className="overflow-x-auto bg-[#1e293b] rounded-lg shadow-lg">
@@ -198,6 +243,17 @@ export default function WithdrawalsManagement() {
           </table>
         </div>
       )}
+
+      {/* pagination footer */}
+      <div className="mt-3 flex items-center justify-center">
+        {hasMore ? (
+          <button disabled={loading} onClick={() => load(false)} className="px-4 py-2 bg-gray-700 rounded text-sm disabled:opacity-50">
+            {loading ? "Loading…" : "Load more"}
+          </button>
+        ) : (
+          <div className="text-xs opacity-60">All loaded</div>
+        )}
+      </div>
 
       <ConfirmModal
         open={modal.open}
