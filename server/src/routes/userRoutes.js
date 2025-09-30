@@ -89,11 +89,43 @@ userRoutes.get(
   "/admin/users",
   verifyToken,
   authorizeRoles("admin"),
-  async (_req, res) => {
+  async (req, res) => {
     try {
-      const users = await User.find().sort({ createdAt: -1 });
-      res.status(200).json({ success: true, users });
+      const page = Math.max(parseInt(req.query.page) || 1, 1);
+      const limit = Math.min(parseInt(req.query.limit) || 50, 100); // cap 100
+      const q = (req.query.q || "").trim();
+
+      const filter = q
+        ? {
+            $or: [
+              { name: new RegExp(q, "i") },
+              { email: new RegExp(q, "i") },
+              { phone: new RegExp(q, "i") },
+            ],
+          }
+        : {};
+
+      const projection = "-password -__v -blockedReason";
+
+      const [items, total] = await Promise.all([
+        User.find(filter, projection)
+          .sort({ _id: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        User.countDocuments(filter),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        page,
+        limit,
+        total,
+        hasMore: page * limit < total,
+        users: items,
+      });
     } catch (err) {
+      console.error("Admin users fetch error:", err);
       res
         .status(500)
         .json({ success: false, message: "Failed to fetch users" });

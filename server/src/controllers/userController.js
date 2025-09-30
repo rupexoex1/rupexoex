@@ -88,12 +88,27 @@ export const checkUSDTDeposit = async (req, res) => {
 export const getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
-    const transactions = await Transaction.find({ userId }).sort({
-      createdAt: -1,
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      Transaction.find({ userId }, "-__v")
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Transaction.countDocuments({ userId }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      total,
+      hasMore: skip + rows.length < total,
+      transactions: rows,
     });
-    res
-      .status(200)
-      .json({ success: true, count: transactions.length, transactions });
   } catch (error) {
     console.error("Fetch transaction history error:", error.message);
     res
@@ -332,10 +347,28 @@ export const placeOrder = async (req, res) => {
 ========================= */
 export const getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({
-      createdAt: -1,
+    const userId = req.user._id;
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      Order.find({ user: userId }, "-__v")
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments({ user: userId }),
+    ]);
+
+    res.json({
+      success: true,
+      page,
+      limit,
+      total,
+      hasMore: skip + rows.length < total,
+      orders: rows,
     });
-    res.json({ success: true, orders });
   } catch (err) {
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
@@ -536,10 +569,27 @@ export const createWithdrawal = async (req, res) => {
 export const getMyWithdrawals = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
-    const rows = await Withdrawal.find({ user: userId }).sort({
-      createdAt: -1,
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      Withdrawal.find({ user: userId }, "-__v")
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Withdrawal.countDocuments({ user: userId }),
+    ]);
+
+    return res.json({
+      success: true,
+      page,
+      limit,
+      total,
+      hasMore: skip + rows.length < total,
+      withdrawals: rows,
     });
-    return res.json({ success: true, withdrawals: rows });
   } catch (err) {
     console.error("getMyWithdrawals error:", err);
     return res.status(500).json({ success: false, message: "Server error" });

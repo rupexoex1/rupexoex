@@ -13,23 +13,37 @@ const isManual =
 /**
  * GET /admin/transactions
  */
-export const getAllTransactions = async (_req, res) => {
+export const getAllTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find()
-      .populate("userId", "email")
-      .sort({ createdAt: -1 });
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+    const skip = (page - 1) * limit;
+
+    const filter = {}; // optionally add status/user/q/date filters here
+
+    const [rows, total] = await Promise.all([
+      Transaction.find(filter, "-__v")
+        .populate({ path: "userId", select: "email" })
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Transaction.countDocuments(filter),
+    ]);
 
     res.status(200).json({
       success: true,
-      count: transactions.length,
-      transactions,
+      page,
+      limit,
+      total,
+      hasMore: skip + rows.length < total,
+      transactions: rows,
     });
   } catch (error) {
-    console.error("Admin transaction fetch error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch all transactions",
-    });
+    console.error("Admin transaction fetch error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch all transactions" });
   }
 };
 
@@ -157,13 +171,34 @@ export const updateOrderStatus = async (req, res) => {
 /**
  * GET /admin/orders
  */
-export const getAllOrders = async (_req, res) => {
+export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate("user", "email") // 👈 sirf email
-      .sort({ createdAt: -1 })
-      .lean(); // optional (faster)
-    res.status(200).json({ success: true, orders });
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+    const skip = (page - 1) * limit;
+
+    const filter = {}; // add status/user filters if needed
+
+    const [rows, total] = await Promise.all([
+      Order.find(filter)
+        // send minimal fields for list view (details page uses /orders/:id)
+        .select("user amount inrAmount status plan price createdAt completedAt")
+        .populate({ path: "user", select: "email" })
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      total,
+      hasMore: skip + rows.length < total,
+      orders: rows,
+    });
   } catch (err) {
     console.error("Error fetching orders:", err);
     res.status(500).json({ success: false, message: "Failed to fetch orders" });
@@ -175,12 +210,30 @@ export const getAllOrders = async (_req, res) => {
 /**
  * GET /api/v1/users/admin/withdrawals
  */
-export const adminListWithdrawals = async (_req, res) => {
+export const adminListWithdrawals = async (req, res) => {
   try {
-    const rows = await Withdrawal.find({})
-      .populate("user", "email")
-      .sort({ createdAt: -1 });
-    return res.json({ success: true, withdrawals: rows });
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 100, 200);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      Withdrawal.find({}, "-__v")
+        .populate({ path: "user", select: "email" })
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Withdrawal.countDocuments(),
+    ]);
+
+    return res.json({
+      success: true,
+      page,
+      limit,
+      total,
+      hasMore: skip + rows.length < total,
+      withdrawals: rows,
+    });
   } catch (err) {
     console.error("adminListWithdrawals error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -277,11 +330,21 @@ const computeAvailableBalance = async (userId) => {
 };
 
 // GET /api/v1/users/admin/users-with-balance
-export const adminListUsersWithBalance = async (_req, res) => {
+export const adminListUsersWithBalance = async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 }).lean();
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const skip = (page - 1) * limit;
 
-    // parallel compute
+    const [users, total] = await Promise.all([
+      User.find({}, "name email phone role blocked createdAt") // minimal fields
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(),
+    ]);
+
     const enriched = await Promise.all(
       users.map(async (u) => {
         const bal = await computeAvailableBalance(u._id);
@@ -289,7 +352,14 @@ export const adminListUsersWithBalance = async (_req, res) => {
       })
     );
 
-    return res.json({ success: true, users: enriched });
+    return res.json({
+      success: true,
+      page,
+      limit,
+      total,
+      hasMore: skip + enriched.length < total,
+      users: enriched,
+    });
   } catch (err) {
     console.error("adminListUsersWithBalance error:", err);
     return res.status(500).json({ success: false, message: "Server error" });
