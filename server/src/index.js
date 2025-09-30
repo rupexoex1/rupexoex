@@ -58,7 +58,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1", ratesRoutes);
 
-const PORT = process.env.PORT || 7002;
+const PORT = process.env.PORT || 7001;
 app.listen(PORT, () => {
   console.log(`Server is running at port: ${PORT}`);
 });
