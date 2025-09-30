@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
-import dns from "dns";
 
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
 const dbConnect = async () => {
   try {
     // Event: Database successfully connected
@@ -13,7 +11,7 @@ const dbConnect = async () => {
     mongoose.connection.on("error", (err) => {
       console.log("❌ Database connection error: " + err);
     });
-    await mongoose.connect(`${process.env.MONGODB_URI}/rupexo`);
+    await mongoose.connect(process.env.MONGODB_URI, { dbName: "rupexo" });
   } catch (error) {
     console.log(`Error is from dbConnect.js file: ${error}`);
   }
