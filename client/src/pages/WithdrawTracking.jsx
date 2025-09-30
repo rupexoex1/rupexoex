@@ -9,16 +9,20 @@ const formatDateTime = (dt) => {
   try {
     return new Date(dt).toLocaleString();
   } catch {
-    return dt;
+    return String(dt);
   }
 };
 
 const CopyButton = ({ text, label = "Copy" }) => (
   <button
-    onClick={() => {
+    onClick={async () => {
       if (!text) return;
-      navigator.clipboard.writeText(text);
-      toast.success("Copied to clipboard");
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard");
+      } catch {
+        toast.error("Copy failed");
+      }
     }}
     className="text-xs px-2 py-1 rounded-md border border-slate-600 hover:border-slate-400 text-slate-200"
   >
@@ -38,9 +42,9 @@ const Skeleton = () => (
 
 const StatusPill = ({ status }) => {
   const map = {
-    pending:   { text: "Pending",   className: "bg-amber-500/15 text-amber-300 border border-amber-400/30" },
-    approved:  { text: "Approved",  className: "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30" },
-    rejected:  { text: "Rejected",  className: "bg-red-500/15 text-red-300 border border-red-400/30" },
+    pending:  { text: "Pending",  className: "bg-amber-500/15 text-amber-300 border border-amber-400/30" },
+    approved: { text: "Approved", className: "bg-emerald-500/15 text-emerald-300 border border-emerald-400/30" },
+    rejected: { text: "Rejected", className: "bg-red-500/15 text-red-300 border border-red-400/30" },
   };
   const s = map[status] || map.pending;
   return (
@@ -102,14 +106,18 @@ export default function WithdrawTracking() {
         setRefreshing(true);
       }
       const res = await axios.get(`/api/v1/users/withdrawals/${id}`);
-      if (res.data?.success) {
+      if (res.data?.success && res.data.withdrawal) {
         setWd(res.data.withdrawal);
       } else {
-        setError(res.data?.message || "Failed to fetch withdrawal");
+        setError(res.data?.message || "Not found");
       }
     } catch (err) {
-      console.error(err);
-      setError("Failed to fetch withdrawal");
+      const status = err?.response?.status;
+      setError(
+        status === 404
+          ? "Withdrawal not found"
+          : err?.response?.data?.message || "Failed to fetch withdrawal"
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -118,6 +126,11 @@ export default function WithdrawTracking() {
 
   // initial
   useEffect(() => {
+    // clear any previous poll if navigating between ids
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
     fetchWithdrawal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -125,13 +138,19 @@ export default function WithdrawTracking() {
   // poll while pending
   useEffect(() => {
     if (!wd) return;
+    // clear previous interval defensively
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
     if (wd.status === "pending") {
       pollRef.current = setInterval(() => fetchWithdrawal(true), 7000);
-    } else if (pollRef.current) {
-      clearInterval(pollRef.current);
     }
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wd?.status]);
@@ -153,13 +172,15 @@ export default function WithdrawTracking() {
     };
   }, [wd?.status]);
 
-  const amountUSDT = Number(wd?.amount || 0);
-  const feeUSD = Number(wd?.feeUSD || 0);
+  const amountUSDT = Number(wd?.amount ?? 0);
+  const feeUSD = Number(wd?.feeUSD ?? 0);
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#0b1220] text-slate-100 px-4 md:px-8 py-6">
       {/* Header */}
-      <div className={`rounded-2xl border ${headerAccent} bg-gradient-to-br p-5 md:p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4`}>
+      <div
+        className={`rounded-2xl border ${headerAccent} bg-gradient-to-br p-5 md:p-6 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4`}
+      >
         <div>
           <div className="text-sm text-slate-300/80">Withdrawal#</div>
           <div className="flex items-center gap-2 mt-1">
@@ -182,10 +203,10 @@ export default function WithdrawTracking() {
             Refresh
           </button>
           <Link
-            to="/profile"
+            to="/user-withdrawals"
             className="px-3 py-2 md:px-4 md:py-2 rounded-lg bg-slate-100 text-slate-900 hover:bg-white text-sm font-semibold"
           >
-            Back to Profile
+            Back to Withdrawals
           </Link>
         </div>
       </div>
@@ -213,7 +234,8 @@ export default function WithdrawTracking() {
                 Created: {formatDateTime(wd?.createdAt)}{" "}
                 {wd?.completedAt && (
                   <>
-                    • Completed: <span className="text-slate-300">{formatDateTime(wd.completedAt)}</span>
+                    • Completed:{" "}
+                    <span className="text-slate-300">{formatDateTime(wd.completedAt)}</span>
                   </>
                 )}
               </div>
@@ -227,7 +249,13 @@ export default function WithdrawTracking() {
                 done={steps.s1.done}
               />
               <Step
-                title={wd?.status === "pending" ? "Processing" : wd?.status === "rejected" ? "Processing halted" : "Processing complete"}
+                title={
+                  wd?.status === "pending"
+                    ? "Processing"
+                    : wd?.status === "rejected"
+                    ? "Processing halted"
+                    : "Processing complete"
+                }
                 subtitle={
                   wd?.status === "pending"
                     ? "Awaiting admin review"
@@ -260,7 +288,7 @@ export default function WithdrawTracking() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Withdraw Amount</span>
-                  <span className="font-semibold">USDT {amountUSDT}</span>
+                  <span className="font-semibold">USDT {amountUSDT.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Platform Fee</span>
@@ -268,7 +296,7 @@ export default function WithdrawTracking() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Net to Wallet</span>
-                  <span className="font-semibold">USDT {amountUSDT}</span>
+                  <span className="font-semibold">USDT {amountUSDT.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -312,18 +340,22 @@ export default function WithdrawTracking() {
                 Print / Save PDF
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const text =
                     `Withdrawal ${wd?._id}\n` +
                     `Status: ${wd?.status}\n` +
-                    `Amount: USDT ${amountUSDT}\n` +
+                    `Amount: USDT ${amountUSDT.toFixed(2)}\n` +
                     `Fee: $${feeUSD.toFixed(2)}\n` +
                     `Network: ${wd?.network}\n` +
                     `Address: ${wd?.address}\n` +
                     `Created: ${formatDateTime(wd?.createdAt)}\n` +
                     `${wd?.completedAt ? "Completed: " + formatDateTime(wd.completedAt) : ""}`;
-                  navigator.clipboard.writeText(text);
-                  toast.success("Withdrawal summary copied");
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    toast.success("Withdrawal summary copied");
+                  } catch {
+                    toast.error("Copy failed");
+                  }
                 }}
                 className="px-3 py-2 rounded-lg bg-slate-100 text-slate-900 hover:bg-white text-sm font-semibold"
               >
