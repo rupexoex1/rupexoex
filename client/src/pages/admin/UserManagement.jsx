@@ -27,33 +27,41 @@ export default function UserManagement() {
     n === undefined || n === null
       ? "—"
       : new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-          Number(n)
-        );
+        Number(n)
+      );
 
   const load = async (reset = false) => {
     try {
       setLoading(true);
       const p = reset ? 1 : page;
 
-      // try users-with-balance
+      // try batch endpoint first
       let res;
       try {
         res = await axios.get(USERS_WITH_BAL_ENDPOINT, { params: { page: p, limit, q } });
       } catch (e) {
         if (e?.response?.status !== 404) throw e;
-        // fallback: plain users list (may not include balance)
+        // fallback: plain users list
         res = await axios.get(USERS_FALLBACK_ENDPOINT, { params: { page: p, limit, q } });
       }
 
-      const payload = res?.data;
-      const list =
-        payload?.users ||
-        payload?.items ||
-        []; // keep it robust
+      const payload = res?.data || {};
+      const list = payload.users || payload.items || [];
 
+      // rows
       setRows((prev) => (reset ? list : [...prev, ...list]));
-      setTotal(Number(payload?.total || (reset ? list.length : prev.length + list.length)));
-      setHasMore(Boolean(payload?.hasMore));
+
+      // total
+      if (typeof payload.total === "number") {
+        setTotal(payload.total);
+      } else {
+        setTotal((prevTotal) => (reset ? list.length : prevTotal + list.length));
+      }
+
+      // hasMore (fallback: assume more if we got a full page)
+      const more = payload.hasMore ?? (list.length === limit);
+      setHasMore(Boolean(more));
+
       setPage(p + 1);
     } catch (err) {
       const status = err?.response?.status;
@@ -63,6 +71,7 @@ export default function UserManagement() {
       setLoading(false);
     }
   };
+
 
   // first load + whenever q changes -> reset
   useEffect(() => {
