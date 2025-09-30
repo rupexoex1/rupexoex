@@ -162,31 +162,49 @@ export const resendOtp = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const nEmail = norm(email);
-
-    const user = await User.findOne({ email: nEmail }).select('+password');
-    if (!user) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User not found" });
+    // 0) Basic input check (so server never crashes on empty fields)
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email & password required" });
     }
 
+    const nEmail = (email || "").trim().toLowerCase();
+
+    // 1) Get the user AND the hidden password field
+    const user = await User.findOne({ email: nEmail }).select("+password"); // <-- important
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+
+    // 2) Block login if not verified
     if (!user.isVerified) {
       return res.status(403).json({
         success: false,
-        message: "Please verify your email before logging in.",
+        message: "Please verify your email before logging in."
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid credentials" });
+    // 3) Compare password safely
+    if (!user.password) {
+      console.error("Login error: password not selected for", nEmail);
+      return res.status(500).json({ success: false, message: "Server misconfigured" });
+    }
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return res.status(400).json({ success: false, message: "Invalid credentials" });
     }
 
-    const token = JWT_SIGN(user);
+    // 4) JWT secret guard (prevents crash if missing)
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET missing");
+      return res.status(500).json({ success: false, message: "Server misconfigured" });
+    }
+
+    // 5) Make the token and respond
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET
+    );
 
     return res.status(200).json({
       success: true,
@@ -195,17 +213,17 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role,
+        role: user.role
       },
-      token,
+      token
     });
-  } catch (error) {
-    console.error("Login error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+  } catch (err) {
+    // TEMP: log exact reason to Vercel Logs (safe for debugging)
+    console.error("Login error:", err?.message || err);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
 
 export const forgotPassword = async (req, res) => {
   try {
