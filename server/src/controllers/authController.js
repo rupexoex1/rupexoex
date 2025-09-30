@@ -160,6 +160,9 @@ export const resendOtp = async (req, res) => {
   }
 };
 
+
+// yahan se change kia
+
 export const login = async (req, res) => {
   try {
     // 0) Basic input check (so server never crashes on empty fields)
@@ -218,10 +221,10 @@ export const login = async (req, res) => {
       token
     });
   } catch (err) {
-    // TEMP: log exact reason to Vercel Logs (safe for debugging)
-    console.error("Login error:", err?.message || err);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
+  console.error('Login error:', err); // keep this
+  return res.status(500).json({ success: false, message: String(err?.message || err) });
+}
+
 };
 
 
