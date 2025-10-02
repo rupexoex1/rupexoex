@@ -1,4 +1,3 @@
-// src/pages/Exchange.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Headset, HelpCircle } from "lucide-react";
@@ -18,6 +17,7 @@ const Exchange = () => {
   const {
     axios,
     token,
+    loading: authLoading,
     userBalance,           // NET balance (credits/forwarded - deducts)
     fetchUserBalance,
     selectedPlan,
@@ -28,16 +28,18 @@ const Exchange = () => {
     vipMin,
   } = useAppContext();
 
+  const authReady = !authLoading && !!token;
+
   // local: processing hold (sum of all pending orders + withdrawals WITHOUT fee)
   const [processingHold, setProcessingHold] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(true);
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    if (!authReady) return; // 🔐 wait until token + axios header ready
+
+    let cancelled = false;
     (async () => {
+      setBusy(true);
       try {
         await fetchUserBalance();
         const [ordRes, wdRes] = await Promise.all([
@@ -58,14 +60,16 @@ const Exchange = () => {
               .reduce((sum, w) => sum + Number(w.amount || 0), 0)
           : 0;
 
-        setProcessingHold(orderHold + withdrawHold);
+        if (!cancelled) setProcessingHold(orderHold + withdrawHold);
       } catch (e) {
-        console.error("Exchange: fetch error", e);
+        if (!cancelled) console.error("Exchange: fetch error", e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setBusy(false);
       }
     })();
-  }, [token, axios, fetchUserBalance]);
+
+    return () => { cancelled = true; };
+  }, [authReady, axios, fetchUserBalance]);
 
   // tiles
   const available = useMemo(() => Number(userBalance || 0), [userBalance]); // NET (fee already deducted)
@@ -89,14 +93,14 @@ const Exchange = () => {
 
   // Tile without icon
   const StatTile = ({ label, value }) => {
-    const full = loading ? "…" : formatUSD(value);
+    const full = busy ? "…" : formatUSD(value);
     const show =
-      loading ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
+      busy ? "…" : (full.length > 14 ? formatUSD(value, { compact: true }) : full);
 
     return (
       <div className="bg-[#111a2d] border border-slate-700 rounded-xl p-3">
         <div className="text-xs text-slate-400">{label}</div>
-        <div className="text-xs font-semibold truncate mt-0.5" title={loading ? "" : full}>
+        <div className="text-xs font-semibold truncate mt-0.5" title={busy ? "" : full}>
           {show}
         </div>
       </div>
@@ -109,6 +113,15 @@ const Exchange = () => {
       <span className="font-medium">{v}</span>
     </div>
   );
+
+  // ⏳ while auth bootstraps (prevents flicker + accidental 401)
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0b1220] text-white flex items-center justify-center">
+        Loading…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b1220] text-white">
