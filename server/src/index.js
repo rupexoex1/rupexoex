@@ -18,7 +18,7 @@ const allowedOrigins = [
   "https://rupexo.com",
   "https://www.rupexo.com",
   "https://rupexo-backend.vercel.app",
-  "https://rupexo-six.vercel.app"
+  "https://rupexo-seven.vercel.app"
 ];
 
 app.use(cors({
