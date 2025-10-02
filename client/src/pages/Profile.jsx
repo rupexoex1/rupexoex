@@ -10,22 +10,29 @@ import { useAppContext } from "../context/AppContext";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const isLoggedIn = !!localStorage.getItem("token");
 
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const userEmail = storedUser?.email || "guest@email.com";
+  // 🔑 get auth + api from context
+  const { axios, userBalance, fetchUserBalance, token, loading } = useAppContext();
+  const authReady = !loading && !!token; // run API calls only after this is true
 
-  // from context
-  const { axios, userBalance, fetchUserBalance } = useAppContext();
+  // user email (safe fallback to localStorage)
+  let userEmail = "guest@email.com";
+  try {
+    const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    if (storedUser?.email) userEmail = storedUser.email;
+  } catch { }
 
   // local: processing & loading
   const [processingHold, setProcessingHold] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(true);
 
   // fetch available (context) + pending orders/withdrawals -> processing (EXCLUDING $7 fee)
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!authReady) return; // ⛔ until token+headers are ready
+
+    let cancelled = false;
     (async () => {
+      setBusy(true);
       try {
         await fetchUserBalance(); // sets userBalance in context
 
@@ -36,25 +43,29 @@ const Profile = () => {
 
         const orderHold = Array.isArray(ordRes.data?.orders)
           ? ordRes.data.orders
-              .filter((o) => o.status === "pending")
-              .reduce((sum, o) => sum + Number(o.amount || 0), 0)
+            .filter((o) => o.status === "pending")
+            .reduce((sum, o) => sum + Number(o.amount || 0), 0)
           : 0;
 
         // ✅ withdrawal hold WITHOUT fee
         const withdrawHold = Array.isArray(wdRes.data?.withdrawals)
           ? wdRes.data.withdrawals
-              .filter((w) => w.status === "pending")
-              .reduce((sum, w) => sum + Number(w.amount || 0), 0)
+            .filter((w) => w.status === "pending")
+            .reduce((sum, w) => sum + Number(w.amount || 0), 0)
           : 0;
 
-        setProcessingHold(orderHold + withdrawHold);
+        if (!cancelled) setProcessingHold(orderHold + withdrawHold);
       } catch (e) {
-        console.error("Profile fetch error:", e);
+        if (!cancelled) console.error("Profile fetch error:", e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setBusy(false);
       }
     })();
-  }, [isLoggedIn, axios, fetchUserBalance]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, axios, fetchUserBalance]);
 
   // balances
   const available = useMemo(() => Number(userBalance || 0), [userBalance]); // NET (fee already deducted)
@@ -66,7 +77,17 @@ const Profile = () => {
     else navigate("/");
   };
 
-  if (!isLoggedIn) {
+  // ⏳ while auth bootstraps (prevents flicker + accidental 401)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-300 bg-[#0F172A]">
+        Loading profile…
+      </div>
+    );
+  }
+
+  // 🚪 extra safety (route should also be wrapped in <RequireAuth>)
+  if (!token) {
     return (
       <div className="w-full flex flex-col justify-center items-center px-4">
         <img src={coins} alt="WX Logo" className="rounded-lg object-cover" />
@@ -126,36 +147,36 @@ const Profile = () => {
           <BalanceBox
             label="Total"
             value={
-              loading
+              busy
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(total)
+                  style: "currency",
+                  currency: "USD",
+                }).format(total)
             }
           />
 
           <BalanceBox
             label="Available"
             value={
-              loading
+              busy
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(available)
+                  style: "currency",
+                  currency: "USD",
+                }).format(available)
             }
           />
 
           <BalanceBox
             label="Processing"
             value={
-              loading
+              busy
                 ? "…"
                 : new Intl.NumberFormat("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                  }).format(processing)
+                  style: "currency",
+                  currency: "USD",
+                }).format(processing)
             }
           />
         </div>
