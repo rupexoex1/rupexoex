@@ -1,7 +1,8 @@
+// server/src/index.js
 import express from "express";
 import "dotenv/config";
 import cors from "cors";
-import compression from "compression";                 // ← NEW
+import compression from "compression";
 import dbConnect from "./config/dbConnect.js";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -28,10 +29,9 @@ app.use(cors({
   credentials: true,
 }));
 
-// ✅ shrink responses
 app.use(compression());
 
-// ✅ add a tiny guard (if someone accidentally returns 5–10MB)
+// guard (as-is) ...
 app.use((req, res, next) => {
   const send = res.json.bind(res);
   res.json = (data) => {
@@ -58,9 +58,8 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1", ratesRoutes);
 
-const PORT = process.env.PORT || 7001;
-app.listen(PORT, () => {
-  console.log(`Server is running at port: ${PORT}`);
-});
+// ❌ yahan listen NAHIN karna
+// const PORT = process.env.PORT || 7001;
+// app.listen(PORT, () => console.log(`Server is running at port: ${PORT}`));
 
 export default app;
