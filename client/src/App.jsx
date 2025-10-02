@@ -10,7 +10,7 @@ import Register from "./components/admin/Register";
 import Login from "./components/admin/Login";
 import VerifyOtp from "./components/admin/VerifyOtp";
 import ForgotPassword from "./components/admin/ForgotPassword";
-import VerifyResetOtp from "./components/admin/VerifyResetOtp ";
+import VerifyResetOtp from "./components/admin/VerifyResetOtp"; // 🔧 space removed
 import ResetPassword from "./components/admin/ResetPassword";
 import AdminLayout from "./pages/admin/AdminLayout";
 import Deposit from "./pages/deposit/Deposit";
@@ -38,8 +38,23 @@ import WithdrawalsManagement from "./pages/admin/WithdrawalsManagement";
 import BlockedAccount from "./pages/BlockedAccount";
 import BlockGuard from "./components/BlockGuard";
 
+// 🔐 new guard for signed-in user pages
+import RequireAuth from "./components/RequireAuth";
+
 const App = () => {
-  const { token } = useAppContext();
+  const { token, loading } = useAppContext();
+
+  // ⏳ simple loading gate to prevent first-render flicker
+  if (loading) {
+    return (
+      <>
+        <Toaster />
+        <div className="min-h-screen flex items-center justify-center text-gray-600">
+          Initializing…
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -50,8 +65,22 @@ const App = () => {
         <Route path="/" element={<Layout />}>
           {/* USER ROUTES */}
           <Route index element={<Home />} />
-          <Route path="/exchange" element={token ? <Exchange /> : <Login />} />
-          <Route path="/orders" element={token ? <Orders /> : <Login />} />
+          <Route
+            path="/exchange"
+            element={
+              <RequireAuth>
+                <Exchange />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <RequireAuth>
+                <Orders />
+              </RequireAuth>
+            }
+          />
           <Route path="/profile" element={<Profile />} />
           {/* <Route path="/coin/:coinId" element={<Coin />} /> */}
           <Route path="/register" element={<Register />} />
@@ -84,7 +113,7 @@ const App = () => {
             <Route path="role" element={<RoleManagement />} />
             <Route path="settings" element={<MasterWalletSettings />} />
             <Route path="adjust-balance" element={<BalanceAdjust />} />
-            <Route path="withdrawals" element={<WithdrawalsManagement />} /> {/* ✅ relative path */}
+            <Route path="withdrawals" element={<WithdrawalsManagement />} />
           </Route>
         </Route>
       </Routes>

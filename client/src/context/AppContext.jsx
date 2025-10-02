@@ -18,8 +18,16 @@ function decodeJWT(token) {
 export const AppProvider = ({ children }) => {
   const navigate = useNavigate();
 
-  const [token, setToken] = useState(null);
-  const [role, setRole] = useState(null);
+  // 🔑 Hydrate from localStorage synchronously (prevents first-render logout)
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [role, setRole] = useState(() => {
+    try {
+      const u = localStorage.getItem("user");
+      return u ? JSON.parse(u).role : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   // 🔒 persisted blocked flag for UX guarding
@@ -65,26 +73,28 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // bootstrap (token/role + initial fetches)
+  // 🧰 bootstrap (token/role + initial fetches)
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 
     if (storedToken) {
-      setToken(storedToken);
+      // axios header turant set
       axios.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
       const decoded = decodeJWT(storedToken);
-      if (decoded?.role) setRole(decoded.role);
+      if (!role && decoded?.role) setRole(decoded.role);
     }
 
     if (storedUser && !role) {
-      const parsed = JSON.parse(storedUser);
-      if (parsed?.role) setRole(parsed.role);
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed?.role) setRole(parsed.role);
+      } catch { }
     }
 
-    fetchPricesFromBackend();
-    fetchUserBalance();
-    setLoading(false);
+    Promise.all([fetchPricesFromBackend(), fetchUserBalance()]).finally(() =>
+      setLoading(false)
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -100,7 +110,7 @@ export const AppProvider = ({ children }) => {
   // Global interceptor:
   // - 403 ACCOUNT_BLOCKED → mark blocked + force /blocked
   // - any successful protected call → clear blocked flag
-  // - 401 / 400 token errors → force logout → /login
+  // - 401 / specific 400 token errors (on authorized requests only) → force logout → /login
   useEffect(() => {
     const resInterceptor = axios.interceptors.response.use(
       (r) => {
@@ -126,15 +136,20 @@ export const AppProvider = ({ children }) => {
           return Promise.reject(err);
         }
 
-        // Invalid/expired/missing token
+        // 🔐 Logout only if the failing request had Authorization header
+        const isAuthRequest = !!err?.config?.headers?.Authorization;
         const tokenInvalid =
-          status === 401 ||
-          (status === 400 && (msg.includes("token is not valid") || msg.includes("token")));
+          isAuthRequest &&
+          (status === 401 ||
+            (status === 400 &&
+              (msg.includes("token is not valid") || msg.includes("token"))));
 
         if (tokenInvalid) {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
           localStorage.removeItem("isBlocked");
+          setToken(null);
+          setRole(null);
           delete axios.defaults.headers.common["Authorization"];
           if (window.location.pathname !== "/login") {
             window.location.replace("/login");
