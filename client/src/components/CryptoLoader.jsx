@@ -1,4 +1,4 @@
-import logo from "../assets/rupexo-logo.png"; // 👈 apne project me jahan logo rakha hai uska sahi path do
+import logo from "../assets/static/logo.png"; // 👈 apne project me jahan logo rakha hai uska sahi path do
 
 export default function CryptoLoader() {
   return (
