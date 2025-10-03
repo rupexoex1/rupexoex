@@ -9,20 +9,21 @@ import userRoutes from "./routes/userRoutes.js";
 import ratesRoutes from "./routes/ratesRoutes.js";
 import { startDepositCron } from "./cronJobs/depositChecker.js";
 
-dbConnect();
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:7001",
-  "https://rupexo.com",
-  "https://www.rupexo.com",
-  "https://rupexo-backend.vercel.app",
-  "https://rupexo-seven.vercel.app"
-];
+// pehle connect — buffer se bachne ke liye
+await dbConnect();               // <- IMPORTANT
 
 app.use(cors({
   origin(origin, cb) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://localhost:7001",
+      "https://rupexo.com",
+      "https://www.rupexo.com",
+      "https://rupexo-backend.vercel.app",
+      "https://rupexo-seven.vercel.app"
+    ];
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
     return cb(new Error("Not allowed by CORS"));
   },
@@ -31,7 +32,7 @@ app.use(cors({
 
 app.use(compression());
 
-// guard (as-is) ...
+// payload guard (as-is)
 app.use((req, res, next) => {
   const send = res.json.bind(res);
   res.json = (data) => {
@@ -52,14 +53,12 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// DB ready ke baad hi cron start karo
 startDepositCron();
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1", ratesRoutes);
-
-// ❌ yahan listen NAHIN karna
-// const PORT = process.env.PORT || 7001;
-// app.listen(PORT, () => console.log(`Server is running at port: ${PORT}`));
 
 export default app;
