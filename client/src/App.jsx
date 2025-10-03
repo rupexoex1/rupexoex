@@ -1,5 +1,6 @@
 import { Toaster } from "react-hot-toast";
 import { Route, Routes } from "react-router-dom";
+import CryptoLoader from "./components/CryptoLoader";
 import Layout from "./layout/Layout";
 import Home from "./pages/Home";
 import Exchange from "./pages/Exchange";
@@ -49,9 +50,7 @@ const App = () => {
     return (
       <>
         <Toaster />
-        <div className="min-h-screen flex items-center justify-center text-gray-600">
-          Rupexo
-        </div>
+        <CryptoLoader />
       </>
     );
   }
