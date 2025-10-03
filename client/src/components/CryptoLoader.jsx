@@ -1,4 +1,4 @@
-import logo from "../assets/rupexo-logo.png"; // apne path ke hisaab se adjust karo
+import logo from "../assets/static/logo.png"; // apne path ke hisaab se adjust karo
 
 export default function CryptoLoader() {
   return (
