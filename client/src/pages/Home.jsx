@@ -11,7 +11,6 @@ import USDTPriceCards from '../components/containers/USDTPriceCards'
 import { useAppContext } from '../context/AppContext'
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import CryptoLoader from '../components/CryptoLoader'
 
 const Home = () => {
   const { axios, userBalance } = useAppContext();
@@ -128,7 +127,6 @@ const Home = () => {
         <ContainerOne />
         <ContainerTwo />
         <ContainerThree />
-        <CryptoLoader/>
         <div className='my-6 flex justify-center items-center'>
           <img src={twoMobiles} alt="" />
         </div>
