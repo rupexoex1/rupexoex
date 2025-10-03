@@ -100,12 +100,3 @@ export default function CryptoLoader() {
     </div>
   );
 }
-
-/*
-Usage:
-Replace your current wrapper with <CryptoLoader /> while data/auth is loading.
-
-<div className="min-h-screen flex items-center justify-center text-gray-600">Rupexo</div>
-   ↓
-<CryptoLoader />
-*/
