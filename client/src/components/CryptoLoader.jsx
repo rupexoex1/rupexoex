@@ -1,72 +1,113 @@
-import logo from "../assets/static/logo.png"; // path adjust if needed
+import { motion } from "framer-motion";
 
-export default function CryptoLoader() {
+/**
+ * Props:
+ * - logoSrc: string (required) -> your logo path
+ * - brand?: string = "Rupexo"
+ * - message?: string = "Syncing markets…"
+ * - fullScreen?: boolean = true
+ */
+export default function CryptoLoader({
+  logoSrc,
+  brand = "Rupexo",
+  message = "Syncing markets…",
+  fullScreen = true,
+}) {
   return (
-    <div className="min-h-screen w-full bg-neutral-950 text-neutral-200 flex items-center justify-center p-6">
-      <style>{`
-        @keyframes spin360 { to { transform: rotate(360deg); } }
-        @keyframes glowPulse {
-          0% { box-shadow: 0 0 18px rgba(34,211,238,0.25); }
-          50% { box-shadow: 0 0 28px rgba(16,185,129,0.35); }
-          100% { box-shadow: 0 0 18px rgba(245,158,11,0.25); }
-        }
-        @keyframes shimmer { 0% { transform: translateX(-40%); } 100% { transform: translateX(115%); } }
-        .ringMask {
-          background:
-            conic-gradient(from 0deg,
-              #34d399 0 22deg, transparent 22deg 36deg,
-              #22d3ee 36deg 58deg, transparent 58deg 72deg,
-              #f59e0b 72deg 94deg, transparent 94deg 108deg,
-              #34d399 108deg 130deg, transparent 130deg 144deg,
-              #22d3ee 144deg 166deg, transparent 166deg 180deg,
-              #f59e0b 180deg 202deg, transparent 202deg 216deg,
-              #34d399 216deg 238deg, transparent 238deg 252deg,
-              #22d3ee 252deg 274deg, transparent 274deg 288deg,
-              #f59e0b 288deg 310deg, transparent 310deg 324deg,
-              #34d399 324deg 346deg, transparent 346deg 360deg);
-          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0) content-box,
-                         radial-gradient(farthest-side, #000 calc(100% - 86px), transparent 0);
-          mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0) content-box,
-                radial-gradient(farthest-side, #000 calc(100% - 86px), transparent 0);
-          -webkit-mask-composite: destination-out, source-over;
-                  mask-composite: exclude, add;
-        }
-      `}</style>
+    <div
+      className={
+        (fullScreen ? "min-h-screen " : "") +
+        "w-full bg-neutral-950 text-neutral-100 flex items-center justify-center p-6"
+      }
+    >
+      {/* Soft aurora backdrop */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 opacity-60 blur-3xl"
+             style={{
+               background:
+                 "radial-gradient(40% 35% at 70% 30%, rgba(16,185,129,.15), transparent 60%)," +
+                 "radial-gradient(40% 35% at 30% 70%, rgba(34,211,238,.12), transparent 60%)," +
+                 "radial-gradient(30% 30% at 60% 80%, rgba(245,158,11,.12), transparent 60%)",
+             }} />
+      </div>
 
       <div className="relative">
-        {/* soft aurora glow */}
-        <div className="absolute -inset-16 blur-3xl opacity-40 bg-gradient-to-tr from-emerald-500/40 via-cyan-500/30 to-amber-400/30 rounded-full" />
+        {/* Outer rotating ring */}
+        <motion.div
+          className="relative h-48 w-48 grid place-items-center"
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 7, ease: "linear" }}
+          aria-hidden
+        >
+          {/* ring base (SVG gradient stroke + dashes) */}
+          <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full">
+            <defs>
+              <linearGradient id="ru-glow" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="50%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#f59e0b" />
+              </linearGradient>
+              <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <circle
+              cx="100"
+              cy="100"
+              r="82"
+              fill="none"
+              stroke="url(#ru-glow)"
+              strokeWidth="10"
+              strokeLinecap="round"
+              strokeDasharray="20 16"
+              filter="url(#soft)"
+              opacity="0.9"
+            />
+          </svg>
 
-        {/* rotating outer ring */}
-        <div className="relative h-48 w-48 grid place-items-center rounded-full">
-          <div className="absolute inset-0 ringMask rounded-full p-2 animate-[spin360_7s_linear_infinite]" />
-
-          {/* inner card (square, not circular) */}
-          <div
-            className="h-28 w-28 rounded-xl border border-cyan-400/30 bg-neutral-900/80 backdrop-blur flex items-center justify-center"
-            style={{ animation: "glowPulse 2.4s ease-in-out infinite" }}
+          {/* Inner glass card with LOGO (rectangular, centered) */}
+          <motion.div
+            className="h-28 w-28 rounded-xl bg-neutral-900/80 border border-neutral-700/60 backdrop-blur flex items-center justify-center shadow-[0_0_24px_rgba(56,189,248,0.18)]"
+            animate={{
+              y: [0, -6, 0],
+              rotateX: [0, 8, 0],
+              rotateY: [0, -6, 0],
+            }}
+            transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
+            style={{ transformStyle: "preserve-3d" }}
           >
-            {/* rectangular logo, centered + padded; no rotation */}
             <img
-              src={logo}
-              alt="Rupexo"
-              className="max-h-12 max-w-[84%] object-contain p-1"
+              src={logoSrc}
+              alt={brand}
+              className="max-w-[84%] max-h-12 object-contain"
               draggable="false"
             />
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* text + progress */}
-        <div className="mt-8 text-center">
-          <div className="text-sm uppercase tracking-[0.35em] text-neutral-400">Loading</div>
-          <div className="mt-2 font-semibold text-lg text-neutral-100">Rupexo • Syncing markets…</div>
+        {/* Text + progress */}
+        <motion.div
+          className="mt-8 text-center"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <div className="text-xs uppercase tracking-[0.35em] text-neutral-400">Loading</div>
+          <div className="mt-2 font-semibold text-lg">{brand} • {message}</div>
+
+          {/* Progress shimmer */}
           <div className="mx-auto mt-4 h-1.5 w-56 overflow-hidden rounded-full bg-neutral-800">
-            <div
+            <motion.div
               className="h-full w-1/3 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400"
-              style={{ animation: "shimmer 1.2s ease-in-out infinite" }}
+              animate={{ x: ["-40%", "115%"] }}
+              transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
             />
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
