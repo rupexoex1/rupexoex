@@ -1,61 +1,53 @@
-import { motion } from "framer-motion";
-
 export default function CryptoLoader() {
   return (
     <div className="min-h-screen w-full bg-neutral-950 text-neutral-200 flex items-center justify-center p-6">
+      {/* Inline CSS so no external deps or Tailwind config changes needed */}
+      <style>{`
+        @keyframes spin360 { to { transform: rotate(360deg); } }
+        @keyframes flipY { 0%{ transform: rotateY(0deg);} 50%{ transform: rotateY(180deg);} 100%{ transform: rotateY(360deg);} }
+        @keyframes glowPulse {
+          0% { box-shadow: 0 0 20px rgba(16,185,129,0.25); }
+          50% { box-shadow: 0 0 26px rgba(34,211,238,0.35); }
+          100% { box-shadow: 0 0 20px rgba(245,158,11,0.25); }
+        }
+        @keyframes shimmer { 0% { transform: translateX(-40%); } 100% { transform: translateX(115%); } }
+        .ringMask {
+          /* dashed ring using conic-gradient + mask */
+          background:
+            conic-gradient(from 0deg,
+              #34d399 0deg 30deg,
+              transparent 30deg 45deg,
+              #22d3ee 45deg 75deg,
+              transparent 75deg 90deg,
+              #f59e0b 90deg 120deg,
+              transparent 120deg 135deg) ;
+          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0) content-box,
+                         radial-gradient(farthest-side, #000 calc(100% - 80px), transparent 0);
+          mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 0) content-box,
+                radial-gradient(farthest-side, #000 calc(100% - 80px), transparent 0);
+          -webkit-mask-composite: destination-out, source-over;
+                  mask-composite: exclude, add;
+        }
+      `}</style>
+
       <div className="relative">
         {/* Outer soft glow */}
         <div className="absolute -inset-16 blur-3xl opacity-40 bg-gradient-to-tr from-emerald-500/40 via-cyan-500/30 to-amber-400/30 rounded-full" />
 
-        {/* Rotating chain ring */}
-        <motion.div
+        {/* Rotating chain ring (CSS only) */}
+        <div
           aria-hidden
-          className="relative h-48 w-48 grid place-items-center rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, ease: "linear", duration: 6 }}
+          className="relative h-48 w-48 grid place-items-center rounded-full animate-[spin360_6s_linear_infinite]"
         >
-          <svg
-            viewBox="0 0 200 200"
-            className="absolute inset-0 h-full w-full drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]"
-          >
-            <defs>
-              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#34d399" />
-                <stop offset="50%" stopColor="#22d3ee" />
-                <stop offset="100%" stopColor="#f59e0b" />
-              </linearGradient>
-            </defs>
-            {/* Chain-like dashes around the ring */}
-            <circle
-              cx="100"
-              cy="100"
-              r="80"
-              fill="none"
-              stroke="url(#g1)"
-              strokeWidth="10"
-              strokeDasharray="18 16"
-              strokeLinecap="round"
-              opacity="0.9"
-            />
-          </svg>
+          <div className="absolute inset-0 ringMask rounded-full p-2" />
 
           {/* Pulsing inner ring */}
-          <motion.div
-            className="h-28 w-28 rounded-full border border-cyan-400/40 bg-neutral-900/80 backdrop-blur-xl shadow-[0_0_24px_rgba(56,189,248,0.25)]"
-            animate={{ boxShadow: [
-              "0 0 20px rgba(16,185,129,0.25)",
-              "0 0 26px rgba(34,211,238,0.35)",
-              "0 0 20px rgba(245,158,11,0.25)",
-            ]}}
-            transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
-          />
+          <div className="h-28 w-28 rounded-full border border-cyan-400/40 bg-neutral-900/80 backdrop-blur-xl" style={{ animation: "glowPulse 2.4s ease-in-out infinite" }} />
 
           {/* Spinning coin */}
-          <motion.div
+          <div
             className="absolute h-20 w-20 rounded-full grid place-items-center bg-gradient-to-tr from-neutral-800 via-neutral-700 to-neutral-800 border border-neutral-600/60 shadow-2xl"
-            animate={{ rotateY: [0, 180, 360] }}
-            transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-            style={{ transformStyle: "preserve-3d" }}
+            style={{ transformStyle: "preserve-3d", animation: "flipY 2.2s ease-in-out infinite" }}
           >
             {/* Coin face */}
             <div className="relative h-16 w-16 rounded-full grid place-items-center bg-gradient-to-b from-amber-400 to-amber-500 text-neutral-900 font-black text-2xl tracking-tight">
@@ -72,16 +64,11 @@ export default function CryptoLoader() {
             >
               ₿
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
         {/* Ticker text */}
-        <motion.div
-          className="mt-8 text-center"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
+        <div className="mt-8 text-center">
           <div className="text-sm uppercase tracking-[0.35em] text-neutral-400">Loading</div>
           <div className="mt-2 font-semibold text-lg text-neutral-100">
             Rupexo • Syncing markets…
@@ -89,13 +76,12 @@ export default function CryptoLoader() {
 
           {/* Progress shimmer */}
           <div className="mx-auto mt-4 h-1.5 w-56 overflow-hidden rounded-full bg-neutral-800">
-            <motion.div
+            <div
               className="h-full w-1/3 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400"
-              animate={{ x: ["-40%", "115%"] }}
-              transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+              style={{ animation: "shimmer 1.2s ease-in-out infinite" }}
             />
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
