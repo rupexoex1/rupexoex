@@ -1,4 +1,4 @@
-import logo from "../assets/static/logo.png"; // 👈 apne project me jahan logo rakha hai uska sahi path do
+import logo from "../assets/rupexo-logo.png"; // apne path ke hisaab se adjust karo
 
 export default function CryptoLoader() {
   return (
@@ -27,8 +27,12 @@ export default function CryptoLoader() {
             className="h-28 w-28 rounded-full border border-cyan-400/40 bg-neutral-900/80 backdrop-blur-xl flex items-center justify-center"
             style={{ animation: "glowPulse 2.4s ease-in-out infinite" }}
           >
-            {/* 👇 apna logo yahan dikhana */}
-            <img src={logo} alt="Rupexo" className="h-16 w-auto object-contain" />
+            {/* 👇 Logo with padding & centered */}
+            <img
+              src={logo}
+              alt="Rupexo"
+              className="h-14 w-14 object-contain p-2" // p-2 = padding inside box
+            />
           </div>
         </div>
 
